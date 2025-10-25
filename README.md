@@ -48,6 +48,10 @@ This creates three JSON files:
 
 Open `visualize.html` in a web browser. The visualization:
 - Shows 2000 points from the 4D shell projected to 3D
+- **4D North & South Poles** - Special markers showing the poles of the 4D sphere (where w = ±radius)
+  - North pole (N) in red - positive w direction
+  - South pole (S) in blue - negative w direction
+  - Poles rotate with the 4D sphere, showing how fixed points in 4D move when projected
 - **Real-time 4D rotation** - The sphere rotates in 4D space before projection (ON by default)
 - Separate 3D rotation for the visualization camera view (OFF by default)
 - Colors points by their w-coordinate (red = positive, blue = negative)
