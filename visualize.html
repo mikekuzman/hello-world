@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Sphere Projection Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        button {
+            margin: 5px 0;
+            padding: 8px 12px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            width: 100%;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        select {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            border-radius: 3px;
+        }
+        #canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3 style="margin-top: 0;">4D Sphere → 3D Projection</h3>
+        <div id="stats">
+            <p><strong>Points:</strong> <span id="pointCount">0</span></p>
+            <p><strong>Projection:</strong> <span id="projectionType">-</span></p>
+            <p><strong>4D Radius:</strong> <span id="radius">-</span></p>
+        </div>
+        <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
+            Colors represent the 4th dimension (w-coordinate)<br>
+            Red = positive w, Blue = negative w
+        </p>
+    </div>
+
+    <div id="controls">
+        <h4 style="margin-top: 0;">Controls</h4>
+        <label>Projection Method:</label>
+        <select id="projectionSelect">
+            <option value="perspective">Perspective</option>
+            <option value="stereographic">Stereographic</option>
+            <option value="orthogonal">Orthogonal</option>
+        </select>
+        <label>Point Size:</label>
+        <input type="range" id="pointSize" min="1" max="10" value="3" style="width: 100%;">
+        <button id="regenerate">Regenerate Points</button>
+        <button id="toggleRotation">Toggle Rotation</button>
+        <p style="font-size: 11px; color: #aaa; margin-top: 10px;">
+            Mouse: Rotate | Scroll: Zoom
+        </p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.z = 3;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        // Global state
+        let pointsGroup = null;
+        let autoRotate = true;
+        let currentData = null;
+
+        // Load and visualize data
+        async function loadAndVisualize(projectionType = 'perspective') {
+            try {
+                const response = await fetch(`sphere_4d_${projectionType}.json`);
+                const data = await response.json();
+                currentData = data;
+
+                // Update UI
+                document.getElementById('pointCount').textContent = data.points_3d.length;
+                document.getElementById('projectionType').textContent =
+                    data.metadata.projection_method;
+                document.getElementById('radius').textContent =
+                    data.metadata.radius.toFixed(2);
+
+                visualizePoints(data);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Please run the Python script first to generate the data files!');
+            }
+        }
+
+        function visualizePoints(data) {
+            // Remove old points
+            if (pointsGroup) {
+                scene.remove(pointsGroup);
+            }
+
+            pointsGroup = new THREE.Group();
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+
+            // Convert points to Three.js format
+            data.points_3d.forEach((point, i) => {
+                positions.push(point[0], point[1], point[2]);
+
+                // Color based on 4th dimension (w-coordinate)
+                const w = data.colors[i];
+                // Map w from [0,1] to color: blue (low) -> cyan -> green -> yellow -> red (high)
+                const color = new THREE.Color();
+                color.setHSL(0.7 - w * 0.7, 1.0, 0.5); // Hue from blue to red
+                colors.push(color.r, color.g, color.b);
+            });
+
+            geometry.setAttribute('position',
+                new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color',
+                new THREE.Float32BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: parseFloat(document.getElementById('pointSize').value) * 0.01,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const points = new THREE.Points(geometry, material);
+            pointsGroup.add(points);
+            scene.add(pointsGroup);
+        }
+
+        // Event listeners
+        document.getElementById('projectionSelect').addEventListener('change', (e) => {
+            loadAndVisualize(e.target.value);
+        });
+
+        document.getElementById('pointSize').addEventListener('input', (e) => {
+            if (pointsGroup) {
+                pointsGroup.children[0].material.size = parseFloat(e.target.value) * 0.01;
+            }
+        });
+
+        document.getElementById('regenerate').addEventListener('click', () => {
+            const projection = document.getElementById('projectionSelect').value;
+            loadAndVisualize(projection);
+        });
+
+        document.getElementById('toggleRotation').addEventListener('click', () => {
+            autoRotate = !autoRotate;
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (pointsGroup && autoRotate) {
+                pointsGroup.rotation.y += 0.003;
+                pointsGroup.rotation.x += 0.001;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        loadAndVisualize('perspective');
+        animate();
+    </script>
+</body>
+</html>
