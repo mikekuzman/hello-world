@@ -143,6 +143,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
         // Scene setup
         const scene = new THREE.Scene();
@@ -160,6 +161,14 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // CSS2D renderer for labels
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -173,11 +182,22 @@
         scene.add(pointLight);
 
         // Global state
+        let sceneGroup = new THREE.Group(); // Parent group for all 3D objects
+        scene.add(sceneGroup);
+
         let pointsGroup = null;
         let rotation4D = true;  // 4D rotation ON by default
         let rotation3D = false; // 3D rotation OFF by default
         let currentData = null;
         let originalPoints4D = null;
+
+        // 4D Poles
+        let northPole4D = null;  // Will be [0, 0, 0, radius]
+        let southPole4D = null;  // Will be [0, 0, 0, -radius]
+        let northPoleMesh = null;
+        let southPoleMesh = null;
+        let northPoleLabel = null;
+        let southPoleLabel = null;
 
         // 4D rotation speeds
         let rotationSpeeds = {
@@ -286,6 +306,118 @@
             return [point4D[0], point4D[1], point4D[2]];
         }
 
+        // Create 4D pole markers and labels
+        function createPoles(radius) {
+            // Remove old poles if they exist
+            if (northPoleMesh) {
+                sceneGroup.remove(northPoleMesh);
+                if (northPoleLabel) northPoleMesh.remove(northPoleLabel);
+            }
+            if (southPoleMesh) {
+                sceneGroup.remove(southPoleMesh);
+                if (southPoleLabel) southPoleMesh.remove(southPoleLabel);
+            }
+
+            // Define 4D poles
+            northPole4D = [0, 0, 0, radius];
+            southPole4D = [0, 0, 0, -radius];
+
+            // Create sphere meshes for poles
+            const poleGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+
+            const northPoleMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.5,
+                metalness: 0.3,
+                roughness: 0.4
+            });
+            northPoleMesh = new THREE.Mesh(poleGeometry, northPoleMaterial);
+
+            const southPoleMaterial = new THREE.MeshStandardMaterial({
+                color: 0x0088ff,
+                emissive: 0x0088ff,
+                emissiveIntensity: 0.5,
+                metalness: 0.3,
+                roughness: 0.4
+            });
+            southPoleMesh = new THREE.Mesh(poleGeometry, southPoleMaterial);
+
+            // Create labels
+            const northLabelDiv = document.createElement('div');
+            northLabelDiv.className = 'pole-label';
+            northLabelDiv.textContent = 'N';
+            northLabelDiv.style.color = '#ff0000';
+            northLabelDiv.style.fontFamily = 'Arial, sans-serif';
+            northLabelDiv.style.fontSize = '24px';
+            northLabelDiv.style.fontWeight = 'bold';
+            northLabelDiv.style.textShadow = '0 0 4px black, 0 0 8px black';
+            northPoleLabel = new CSS2DObject(northLabelDiv);
+            northPoleLabel.position.set(0, 0.1, 0);
+            northPoleMesh.add(northPoleLabel);
+
+            const southLabelDiv = document.createElement('div');
+            southLabelDiv.className = 'pole-label';
+            southLabelDiv.textContent = 'S';
+            southLabelDiv.style.color = '#0088ff';
+            southLabelDiv.style.fontFamily = 'Arial, sans-serif';
+            southLabelDiv.style.fontSize = '24px';
+            southLabelDiv.style.fontWeight = 'bold';
+            southLabelDiv.style.textShadow = '0 0 4px black, 0 0 8px black';
+            southPoleLabel = new CSS2DObject(southLabelDiv);
+            southPoleLabel.position.set(0, 0.1, 0);
+            southPoleMesh.add(southPoleLabel);
+
+            sceneGroup.add(northPoleMesh);
+            sceneGroup.add(southPoleMesh);
+
+            // Initial projection
+            updatePoles();
+        }
+
+        function updatePoles() {
+            if (!northPole4D || !southPole4D) return;
+
+            // Apply 4D rotation to poles
+            const rotatedNorth = rotatePoints4D(
+                [northPole4D],
+                rotationAngles.xw,
+                rotationAngles.yw,
+                rotationAngles.zw
+            )[0];
+
+            const rotatedSouth = rotatePoints4D(
+                [southPole4D],
+                rotationAngles.xw,
+                rotationAngles.yw,
+                rotationAngles.zw
+            )[0];
+
+            // Project to 3D
+            const projectionType = document.getElementById('projectionSelect').value;
+            let northPos3D, southPos3D;
+
+            if (projectionType === 'perspective') {
+                northPos3D = projectPerspective(rotatedNorth, projectionDistance);
+                southPos3D = projectPerspective(rotatedSouth, projectionDistance);
+            } else if (projectionType === 'stereographic') {
+                const radius = currentData.metadata.radius;
+                northPos3D = projectStereographic(rotatedNorth, radius);
+                southPos3D = projectStereographic(rotatedSouth, radius);
+            } else {
+                northPos3D = projectOrthogonal(rotatedNorth);
+                southPos3D = projectOrthogonal(rotatedSouth);
+            }
+
+            // Update mesh positions
+            if (northPoleMesh) {
+                northPoleMesh.position.set(northPos3D[0], northPos3D[1], northPos3D[2]);
+            }
+            if (southPoleMesh) {
+                southPoleMesh.position.set(southPos3D[0], southPos3D[1], southPos3D[2]);
+            }
+        }
+
         // Load and visualize data
         async function loadAndVisualize(projectionType = 'perspective') {
             try {
@@ -299,6 +431,9 @@
                 document.getElementById('projectionType').textContent = data.metadata.projection_method;
 
                 visualizePoints(data);
+
+                // Create 4D poles
+                createPoles(data.metadata.radius);
             } catch (error) {
                 console.error('Error loading data:', error);
                 alert('Please run the Python script first to generate the data files!');
@@ -355,12 +490,15 @@
                 });
                 colors.needsUpdate = true;
             }
+
+            // Update pole positions
+            updatePoles();
         }
 
         function visualizePoints(data) {
             // Remove old points
             if (pointsGroup) {
-                scene.remove(pointsGroup);
+                sceneGroup.remove(pointsGroup);
             }
 
             pointsGroup = new THREE.Group();
@@ -395,7 +533,7 @@
 
             const points = new THREE.Points(geometry, material);
             pointsGroup.add(points);
-            scene.add(pointsGroup);
+            sceneGroup.add(pointsGroup);
         }
 
         // Event listeners
@@ -461,13 +599,15 @@
             }
 
             // 3D rotation of visualization
-            if (pointsGroup && rotation3D) {
-                pointsGroup.rotation.y += 0.003;
-                pointsGroup.rotation.x += 0.001;
+            // Rotate the entire scene group (includes points and poles)
+            if (rotation3D) {
+                sceneGroup.rotation.y += 0.003;
+                sceneGroup.rotation.x += 0.001;
             }
 
             controls.update();
             renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
         }
 
         // Handle window resize
@@ -475,6 +615,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         // Start
