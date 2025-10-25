@@ -180,8 +180,8 @@
             <strong>Superfluid Color:</strong> Phase angle<br>
             <strong>Brightness:</strong> Local density<br>
             <strong>Vortices:</strong> Black cores (topological defects)<br>
-            <span style="color: #ff4444;">Red = Positive circulation</span> (quantum # &gt; 0)<br>
-            <span style="color: #4488ff;">Blue = Negative circulation</span> (quantum # &lt; 0)
+            <span style="color: #ff4444;">Red = Eastern hemisphere</span> (x &gt; 0)<br>
+            <span style="color: #4488ff;">Blue = Western hemisphere</span> (x &lt; 0)
         </p>
     </div>
 
@@ -553,28 +553,29 @@
                 const pos4D = vortex.position;
                 const quantumNumber = vortex.quantum_number || 1;
 
-                // Color by quantum number (circulation direction)
-                // Positive quantum number = Red (clockwise circulation)
-                // Negative quantum number = Blue (counter-clockwise circulation)
-                const isPositive = quantumNumber > 0;
-                const circulationColor = isPositive ? 0xff0000 : 0x0088ff;
-                const circulationSign = isPositive ? '+' : '-';
+                // Color by hemisphere (eastern vs western)
+                // Eastern hemisphere (x > 0) = Red
+                // Western hemisphere (x < 0) = Blue
+                const x_coord = pos4D[1];
+                const isEastern = x_coord >= 0;
+                const hemisphereColor = isEastern ? 0xff0000 : 0x0088ff;
+                const hemisphereName = isEastern ? 'E' : 'W';
 
-                // Create black core with circulation-colored glow
+                // Create black core with hemisphere-colored glow
                 const coreGeometry = new THREE.SphereGeometry(0.03 * vortexSizeParam, 16, 16);
                 const coreMaterial = new THREE.MeshStandardMaterial({
                     color: 0x000000,
-                    emissive: circulationColor,
+                    emissive: hemisphereColor,
                     emissiveIntensity: 0.3,
                     metalness: 0.8,
                     roughness: 0.2
                 });
                 const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
 
-                // Create circulation-colored border (wireframe)
+                // Create hemisphere-colored border (wireframe)
                 const borderGeometry = new THREE.SphereGeometry(0.035 * vortexSizeParam, 16, 16);
                 const borderMaterial = new THREE.MeshBasicMaterial({
-                    color: circulationColor,
+                    color: hemisphereColor,
                     wireframe: true,
                     transparent: true,
                     opacity: 0.8
