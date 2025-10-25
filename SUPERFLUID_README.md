@@ -78,12 +78,12 @@ This creates: `snapshot_set_<seed>.json`
 
 ### Vortices
 - **Black cores** with **colored wireframe borders**
-- **Red glow/border** = Northern hemisphere (w > 0)
-- **Blue glow/border** = Southern hemisphere (w < 0)
+- **Red glow/border** = Positive circulation (quantum number > 0)
+- **Blue glow/border** = Negative circulation (quantum number < 0)
 - Mark topological defects where superfluid density → 0
-- Vortices have quantized circulation (quantum numbers)
+- Vortices have quantized circulation: each vortex carries integer quantum number (±1, ±2, ...)
 - Form when the hypersphere rotates fast enough (centrifugal instability)
-- Hemisphere coloring helps track vortex distribution across the 4D shell
+- Color shows rotation direction of the vortex (clockwise vs counter-clockwise in rotation plane)
 
 ### 4D Poles
 - **N (Red)**: North pole at w = +R
