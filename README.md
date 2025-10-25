@@ -161,9 +161,9 @@ distance = 2.5           # Viewpoint distance (perspective only)
 ## Repository Files
 
 ### Quantum Superfluid Project
+- `sim_v005.py` - 4D BEC simulation script (requires GPU with CUDA)
 - `superfluid_viz.html` - Interactive quantum superfluid visualizer (loads v005 JSON)
 - `SUPERFLUID_README.md` - Complete documentation for superfluid visualizer
-- `sim_v005.py` - 4D BEC simulation (user-provided, not in repo)
 
 ### Geometry Demo Project
 - `sphere_4d_projection.py` - Main Python module with all projection logic

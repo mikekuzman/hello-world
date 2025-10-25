@@ -23,6 +23,16 @@ Think of it like rotating a sculpture to view it from different angles, but in 4
 
 ### 1. Generate Simulation Data
 
+**Requirements:**
+- Python 3.x
+- NumPy
+- CuPy (for GPU acceleration)
+- SciPy
+
+```bash
+pip install numpy cupy scipy
+```
+
 Run the simulation to create a snapshot file:
 
 ```bash
@@ -30,6 +40,8 @@ python sim_v005.py
 ```
 
 This creates: `snapshot_set_<seed>.json`
+
+**Note:** The simulation requires an NVIDIA GPU with CUDA support for CuPy. Expect runtime of ~5-10 minutes for default parameters on modern GPUs.
 
 ### 2. Load and Visualize
 
