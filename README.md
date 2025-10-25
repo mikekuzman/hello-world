@@ -1,8 +1,30 @@
-# 4D to 3D Projection Visualizer
+# 4D Visualization Projects
 
-Visualize a 4D hypersphere (3-sphere) projected into 3D space using mathematically rigorous projection methods.
+Two complementary projects for visualizing 4D hypersphere geometry and physics.
 
-## Overview
+## Projects
+
+### 1. 🌊 [Quantum Superfluid Visualizer](SUPERFLUID_README.md) (NEW!)
+
+Interactive visualization of 4D Bose-Einstein Condensate simulations on a rotating hypersphere.
+
+**Features:**
+- Load simulation snapshots from `sim_v005.py`
+- Visualize superfluid density and phase fields
+- Detect and render quantized vortices
+- 4D viewing angles (rotate frozen snapshots in 4D)
+- Time evolution playback
+- Physics-accurate representation
+
+**[→ Full Documentation](SUPERFLUID_README.md)**
+
+### 2. 📐 Static Geometry Demo
+
+Generates random points on a 4D spherical shell and projects them to 3D for visualization. Demonstrates mathematical projection methods with interactive 4D rotation.
+
+---
+
+## Geometry Demo Overview
 
 This project generates random points on a 4D spherical shell and projects them to 3D for visualization. It demonstrates how higher-dimensional geometry can be visualized by projecting down to dimensions we can perceive.
 
@@ -136,10 +158,16 @@ shell_thickness = 0.02   # Shell thickness (2% of radius)
 distance = 2.5           # Viewpoint distance (perspective only)
 ```
 
-## Files
+## Repository Files
 
+### Quantum Superfluid Project
+- `superfluid_viz.html` - Interactive quantum superfluid visualizer (loads v005 JSON)
+- `SUPERFLUID_README.md` - Complete documentation for superfluid visualizer
+- `sim_v005.py` - 4D BEC simulation (user-provided, not in repo)
+
+### Geometry Demo Project
 - `sphere_4d_projection.py` - Main Python module with all projection logic
-- `visualize.html` - Interactive Three.js visualization
+- `visualize.html` - Interactive Three.js visualization with 4D rotation
 - `sphere_4d_*.json` - Generated data files (created after running Python script)
 
 ## Learn More
