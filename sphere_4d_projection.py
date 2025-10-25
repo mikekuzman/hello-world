@@ -29,6 +29,123 @@ class HypersphereProjector:
         self.radius = radius
         self.shell_thickness = shell_thickness
 
+    @staticmethod
+    def rotation_matrix_4d(angle_xy: float = 0, angle_xz: float = 0, angle_xw: float = 0,
+                          angle_yz: float = 0, angle_yw: float = 0, angle_zw: float = 0) -> np.ndarray:
+        """
+        Create a 4D rotation matrix for rotation in multiple planes.
+
+        In 4D, there are 6 independent planes of rotation (vs 3 axes in 3D):
+        - XY plane (like standard 3D z-axis rotation)
+        - XZ plane (like standard 3D y-axis rotation)
+        - XW plane (rotation involving 4th dimension)
+        - YZ plane (like standard 3D x-axis rotation)
+        - YW plane (rotation involving 4th dimension)
+        - ZW plane (rotation involving 4th dimension)
+
+        Args:
+            angle_xy: Rotation angle in XY plane (radians)
+            angle_xz: Rotation angle in XZ plane (radians)
+            angle_xw: Rotation angle in XW plane (radians)
+            angle_yz: Rotation angle in YZ plane (radians)
+            angle_yw: Rotation angle in YW plane (radians)
+            angle_zw: Rotation angle in ZW plane (radians)
+
+        Returns:
+            4x4 rotation matrix
+        """
+        # XY plane rotation (affects x and y, z and w unchanged)
+        if angle_xy != 0:
+            c, s = np.cos(angle_xy), np.sin(angle_xy)
+            R_xy = np.array([
+                [c, -s, 0, 0],
+                [s,  c, 0, 0],
+                [0,  0, 1, 0],
+                [0,  0, 0, 1]
+            ])
+        else:
+            R_xy = np.eye(4)
+
+        # XZ plane rotation
+        if angle_xz != 0:
+            c, s = np.cos(angle_xz), np.sin(angle_xz)
+            R_xz = np.array([
+                [c,  0, -s, 0],
+                [0,  1,  0, 0],
+                [s,  0,  c, 0],
+                [0,  0,  0, 1]
+            ])
+        else:
+            R_xz = np.eye(4)
+
+        # XW plane rotation (involves 4th dimension!)
+        if angle_xw != 0:
+            c, s = np.cos(angle_xw), np.sin(angle_xw)
+            R_xw = np.array([
+                [c,  0,  0, -s],
+                [0,  1,  0,  0],
+                [0,  0,  1,  0],
+                [s,  0,  0,  c]
+            ])
+        else:
+            R_xw = np.eye(4)
+
+        # YZ plane rotation
+        if angle_yz != 0:
+            c, s = np.cos(angle_yz), np.sin(angle_yz)
+            R_yz = np.array([
+                [1,  0,  0, 0],
+                [0,  c, -s, 0],
+                [0,  s,  c, 0],
+                [0,  0,  0, 1]
+            ])
+        else:
+            R_yz = np.eye(4)
+
+        # YW plane rotation (involves 4th dimension!)
+        if angle_yw != 0:
+            c, s = np.cos(angle_yw), np.sin(angle_yw)
+            R_yw = np.array([
+                [1,  0,  0,  0],
+                [0,  c,  0, -s],
+                [0,  0,  1,  0],
+                [0,  s,  0,  c]
+            ])
+        else:
+            R_yw = np.eye(4)
+
+        # ZW plane rotation (involves 4th dimension!)
+        if angle_zw != 0:
+            c, s = np.cos(angle_zw), np.sin(angle_zw)
+            R_zw = np.array([
+                [1,  0,  0,  0],
+                [0,  1,  0,  0],
+                [0,  0,  c, -s],
+                [0,  0,  s,  c]
+            ])
+        else:
+            R_zw = np.eye(4)
+
+        # Compose all rotations
+        R = R_xy @ R_xz @ R_xw @ R_yz @ R_yw @ R_zw
+        return R
+
+    def rotate_points_4d(self, points_4d: np.ndarray,
+                        angle_xy: float = 0, angle_xz: float = 0, angle_xw: float = 0,
+                        angle_yz: float = 0, angle_yw: float = 0, angle_zw: float = 0) -> np.ndarray:
+        """
+        Rotate 4D points using the specified rotation angles.
+
+        Args:
+            points_4d: Array of shape (n, 4) with 4D coordinates
+            angle_xy, angle_xz, angle_xw, angle_yz, angle_yw, angle_zw: Rotation angles
+
+        Returns:
+            Rotated 4D points
+        """
+        R = self.rotation_matrix_4d(angle_xy, angle_xz, angle_xw, angle_yz, angle_yw, angle_zw)
+        return (R @ points_4d.T).T
+
     def generate_random_points_on_4d_sphere(self, n_points: int) -> np.ndarray:
         """
         Generate uniformly distributed random points on a 4D hypersphere shell.

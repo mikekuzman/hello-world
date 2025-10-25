@@ -48,9 +48,12 @@ This creates three JSON files:
 
 Open `visualize.html` in a web browser. The visualization:
 - Shows 2000 points from the 4D shell projected to 3D
+- **Real-time 4D rotation** - The sphere rotates in 4D space before projection (ON by default)
+- Separate 3D rotation for the visualization camera view (OFF by default)
 - Colors points by their w-coordinate (red = positive, blue = negative)
 - Allows switching between projection methods
-- Interactive rotation and zoom
+- Interactive controls for 4D rotation speeds in different planes
+- Mouse rotation and zoom controls
 
 ### 3. Use in Your Own Code
 
@@ -89,6 +92,24 @@ This ensures **uniform distribution** on the hypersphere surface.
 **Perspective projection** is the most intuitive because it mimics how we perceive lower dimensions. When you look at a 3D object, your 2D retina receives a perspective projection of it. Similarly, a hypothetical 4D being would see our 3D world as a 3D "slice" or projection.
 
 **Stereographic projection** is mathematically elegant and preserves angles, making it useful for certain geometric analyses.
+
+### 4D Rotation
+
+In 4D space, rotation is more complex than in 3D. While 3D has 3 rotation axes (x, y, z), **4D has 6 planes of rotation**:
+
+**3D-like rotations** (don't involve w):
+- **XY plane** - Like rotating around the z-axis in 3D
+- **XZ plane** - Like rotating around the y-axis in 3D
+- **YZ plane** - Like rotating around the x-axis in 3D
+
+**4D-specific rotations** (involve the 4th dimension):
+- **XW plane** - Rotates x and w coordinates
+- **YW plane** - Rotates y and w coordinates
+- **ZW plane** - Rotates z and w coordinates
+
+The visualization uses XW, YW, and ZW rotations by default, which creates the characteristic "morphing" effect as points move through the 4th dimension. You can adjust the rotation speeds independently for each plane to create different patterns.
+
+When the hypersphere rotates in 4D space, points with different w-coordinates move in and out of the 3D "slice" we can see, creating mesmerizing flowing patterns that would be impossible with only 3D rotation.
 
 ## Requirements
 

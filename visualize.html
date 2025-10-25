@@ -19,7 +19,7 @@
             padding: 15px;
             border-radius: 5px;
             font-size: 14px;
-            max-width: 300px;
+            max-width: 320px;
             z-index: 100;
         }
         #controls {
@@ -31,6 +31,7 @@
             padding: 15px;
             border-radius: 5px;
             z-index: 100;
+            max-width: 280px;
         }
         button {
             margin: 5px 0;
@@ -45,11 +46,29 @@
         button:hover {
             background: #45a049;
         }
-        select {
+        button.active {
+            background: #ff9800;
+        }
+        select, input[type="range"] {
             margin: 5px 0;
             padding: 8px;
             width: 100%;
             border-radius: 3px;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        .slider-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 3px;
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            color: #ffeb3b;
         }
         #canvas {
             display: block;
@@ -62,28 +81,53 @@
         <div id="stats">
             <p><strong>Points:</strong> <span id="pointCount">0</span></p>
             <p><strong>Projection:</strong> <span id="projectionType">-</span></p>
-            <p><strong>4D Radius:</strong> <span id="radius">-</span></p>
+            <p><strong>4D Rotation:</strong> <span id="rotation4dStatus" style="color: #4CAF50;">ON</span></p>
+            <p><strong>3D Rotation:</strong> <span id="rotation3dStatus" style="color: #f44336;">OFF</span></p>
         </div>
         <p style="font-size: 12px; color: #aaa; margin-top: 10px;">
             Colors represent the 4th dimension (w-coordinate)<br>
-            Red = positive w, Blue = negative w
+            Red = positive w, Blue = negative w<br><br>
+            <strong>4D Rotation:</strong> The hypersphere rotates in 4D space before being projected to 3D. This creates mesmerizing patterns as points move through the 4th dimension!
         </p>
     </div>
 
     <div id="controls">
         <h4 style="margin-top: 0;">Controls</h4>
+
         <label>Projection Method:</label>
         <select id="projectionSelect">
             <option value="perspective">Perspective</option>
             <option value="stereographic">Stereographic</option>
             <option value="orthogonal">Orthogonal</option>
         </select>
-        <label>Point Size:</label>
-        <input type="range" id="pointSize" min="1" max="10" value="3" style="width: 100%;">
+
+        <div class="section-title">4D Rotation Planes</div>
+        <div class="slider-container">
+            <div class="slider-label">XW Rotation Speed: <span id="xwValue">0.5</span></div>
+            <input type="range" id="rotationXW" min="0" max="2" step="0.1" value="0.5">
+        </div>
+        <div class="slider-container">
+            <div class="slider-label">YW Rotation Speed: <span id="ywValue">0.3</span></div>
+            <input type="range" id="rotationYW" min="0" max="2" step="0.1" value="0.3">
+        </div>
+        <div class="slider-container">
+            <div class="slider-label">ZW Rotation Speed: <span id="zwValue">0.2</span></div>
+            <input type="range" id="rotationZW" min="0" max="2" step="0.1" value="0.2">
+        </div>
+
+        <div class="section-title">Appearance</div>
+        <div class="slider-container">
+            <div class="slider-label">Point Size: <span id="sizeValue">3</span></div>
+            <input type="range" id="pointSize" min="1" max="10" value="3">
+        </div>
+
+        <div class="section-title">Actions</div>
+        <button id="toggle4DRotation" class="active">Toggle 4D Rotation</button>
+        <button id="toggle3DRotation">Toggle 3D Rotation</button>
         <button id="regenerate">Regenerate Points</button>
-        <button id="toggleRotation">Toggle Rotation</button>
-        <p style="font-size: 11px; color: #aaa; margin-top: 10px;">
-            Mouse: Rotate | Scroll: Zoom
+
+        <p style="font-size: 11px; color: #aaa; margin-top: 15px;">
+            Mouse: Rotate View | Scroll: Zoom
         </p>
     </div>
 
@@ -130,8 +174,117 @@
 
         // Global state
         let pointsGroup = null;
-        let autoRotate = true;
+        let rotation4D = true;  // 4D rotation ON by default
+        let rotation3D = false; // 3D rotation OFF by default
         let currentData = null;
+        let originalPoints4D = null;
+
+        // 4D rotation speeds
+        let rotationSpeeds = {
+            xw: 0.005,
+            yw: 0.003,
+            zw: 0.002
+        };
+
+        // Current rotation angles in 4D
+        let rotationAngles = {
+            xw: 0,
+            yw: 0,
+            zw: 0
+        };
+
+        // Projection parameters
+        let projectionDistance = 2.5;
+
+        // 4D Rotation Matrix Functions
+        function rotationMatrix4D_XW(angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            return [
+                [c,  0,  0, -s],
+                [0,  1,  0,  0],
+                [0,  0,  1,  0],
+                [s,  0,  0,  c]
+            ];
+        }
+
+        function rotationMatrix4D_YW(angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            return [
+                [1,  0,  0,  0],
+                [0,  c,  0, -s],
+                [0,  0,  1,  0],
+                [0,  s,  0,  c]
+            ];
+        }
+
+        function rotationMatrix4D_ZW(angle) {
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            return [
+                [1,  0,  0,  0],
+                [0,  1,  0,  0],
+                [0,  0,  c, -s],
+                [0,  0,  s,  c]
+            ];
+        }
+
+        function multiplyMatrices4D(A, B) {
+            const result = Array(4).fill(0).map(() => Array(4).fill(0));
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    for (let k = 0; k < 4; k++) {
+                        result[i][j] += A[i][k] * B[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+
+        function applyMatrix4D(matrix, point) {
+            return [
+                matrix[0][0] * point[0] + matrix[0][1] * point[1] + matrix[0][2] * point[2] + matrix[0][3] * point[3],
+                matrix[1][0] * point[0] + matrix[1][1] * point[1] + matrix[1][2] * point[2] + matrix[1][3] * point[3],
+                matrix[2][0] * point[0] + matrix[2][1] * point[1] + matrix[2][2] * point[2] + matrix[2][3] * point[3],
+                matrix[3][0] * point[0] + matrix[3][1] * point[1] + matrix[3][2] * point[2] + matrix[3][3] * point[3]
+            ];
+        }
+
+        function rotatePoints4D(points, angleXW, angleYW, angleZW) {
+            const R_xw = rotationMatrix4D_XW(angleXW);
+            const R_yw = rotationMatrix4D_YW(angleYW);
+            const R_zw = rotationMatrix4D_ZW(angleZW);
+
+            // Compose rotations: R = R_xw * R_yw * R_zw
+            let R = multiplyMatrices4D(R_xw, R_yw);
+            R = multiplyMatrices4D(R, R_zw);
+
+            return points.map(p => applyMatrix4D(R, p));
+        }
+
+        // Projection functions
+        function projectPerspective(point4D, distance) {
+            const scale = distance / (distance - point4D[3]);
+            return [
+                point4D[0] * scale,
+                point4D[1] * scale,
+                point4D[2] * scale
+            ];
+        }
+
+        function projectStereographic(point4D, radius) {
+            const scale = radius / (radius - point4D[3]);
+            return [
+                point4D[0] * scale,
+                point4D[1] * scale,
+                point4D[2] * scale
+            ];
+        }
+
+        function projectOrthogonal(point4D) {
+            return [point4D[0], point4D[1], point4D[2]];
+        }
 
         // Load and visualize data
         async function loadAndVisualize(projectionType = 'perspective') {
@@ -139,18 +292,68 @@
                 const response = await fetch(`sphere_4d_${projectionType}.json`);
                 const data = await response.json();
                 currentData = data;
+                originalPoints4D = data.points_4d;
 
                 // Update UI
                 document.getElementById('pointCount').textContent = data.points_3d.length;
-                document.getElementById('projectionType').textContent =
-                    data.metadata.projection_method;
-                document.getElementById('radius').textContent =
-                    data.metadata.radius.toFixed(2);
+                document.getElementById('projectionType').textContent = data.metadata.projection_method;
 
                 visualizePoints(data);
             } catch (error) {
                 console.error('Error loading data:', error);
                 alert('Please run the Python script first to generate the data files!');
+            }
+        }
+
+        function updateProjection() {
+            if (!originalPoints4D) return;
+
+            // Apply 4D rotation
+            const rotatedPoints = rotatePoints4D(
+                originalPoints4D,
+                rotationAngles.xw,
+                rotationAngles.yw,
+                rotationAngles.zw
+            );
+
+            // Project to 3D
+            const projectionType = document.getElementById('projectionSelect').value;
+            let points3D;
+
+            if (projectionType === 'perspective') {
+                points3D = rotatedPoints.map(p => projectPerspective(p, projectionDistance));
+            } else if (projectionType === 'stereographic') {
+                const radius = currentData.metadata.radius;
+                points3D = rotatedPoints.map(p => projectStereographic(p, radius));
+            } else {
+                points3D = rotatedPoints.map(p => projectOrthogonal(p));
+            }
+
+            // Update point positions
+            if (pointsGroup && pointsGroup.children[0]) {
+                const positions = pointsGroup.children[0].geometry.attributes.position;
+                points3D.forEach((p, i) => {
+                    positions.array[i * 3] = p[0];
+                    positions.array[i * 3 + 1] = p[1];
+                    positions.array[i * 3 + 2] = p[2];
+                });
+                positions.needsUpdate = true;
+
+                // Update colors based on rotated w-coordinate
+                const colors = pointsGroup.children[0].geometry.attributes.color;
+                const wValues = rotatedPoints.map(p => p[3]);
+                const wMin = Math.min(...wValues);
+                const wMax = Math.max(...wValues);
+
+                wValues.forEach((w, i) => {
+                    const normalized = (w - wMin) / (wMax - wMin);
+                    const color = new THREE.Color();
+                    color.setHSL(0.7 - normalized * 0.7, 1.0, 0.5);
+                    colors.array[i * 3] = color.r;
+                    colors.array[i * 3 + 1] = color.g;
+                    colors.array[i * 3 + 2] = color.b;
+                });
+                colors.needsUpdate = true;
             }
         }
 
@@ -172,9 +375,8 @@
 
                 // Color based on 4th dimension (w-coordinate)
                 const w = data.colors[i];
-                // Map w from [0,1] to color: blue (low) -> cyan -> green -> yellow -> red (high)
                 const color = new THREE.Color();
-                color.setHSL(0.7 - w * 0.7, 1.0, 0.5); // Hue from blue to red
+                color.setHSL(0.7 - w * 0.7, 1.0, 0.5);
                 colors.push(color.r, color.g, color.b);
             });
 
@@ -202,25 +404,64 @@
         });
 
         document.getElementById('pointSize').addEventListener('input', (e) => {
-            if (pointsGroup) {
+            document.getElementById('sizeValue').textContent = e.target.value;
+            if (pointsGroup && pointsGroup.children[0]) {
                 pointsGroup.children[0].material.size = parseFloat(e.target.value) * 0.01;
             }
         });
 
+        document.getElementById('rotationXW').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('xwValue').textContent = val.toFixed(1);
+            rotationSpeeds.xw = val * 0.01;
+        });
+
+        document.getElementById('rotationYW').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('ywValue').textContent = val.toFixed(1);
+            rotationSpeeds.yw = val * 0.01;
+        });
+
+        document.getElementById('rotationZW').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('zwValue').textContent = val.toFixed(1);
+            rotationSpeeds.zw = val * 0.01;
+        });
+
         document.getElementById('regenerate').addEventListener('click', () => {
             const projection = document.getElementById('projectionSelect').value;
+            rotationAngles = { xw: 0, yw: 0, zw: 0 };
             loadAndVisualize(projection);
         });
 
-        document.getElementById('toggleRotation').addEventListener('click', () => {
-            autoRotate = !autoRotate;
+        document.getElementById('toggle4DRotation').addEventListener('click', (e) => {
+            rotation4D = !rotation4D;
+            e.target.classList.toggle('active', rotation4D);
+            document.getElementById('rotation4dStatus').textContent = rotation4D ? 'ON' : 'OFF';
+            document.getElementById('rotation4dStatus').style.color = rotation4D ? '#4CAF50' : '#f44336';
+        });
+
+        document.getElementById('toggle3DRotation').addEventListener('click', (e) => {
+            rotation3D = !rotation3D;
+            e.target.classList.toggle('active', rotation3D);
+            document.getElementById('rotation3dStatus').textContent = rotation3D ? 'ON' : 'OFF';
+            document.getElementById('rotation3dStatus').style.color = rotation3D ? '#4CAF50' : '#f44336';
         });
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
 
-            if (pointsGroup && autoRotate) {
+            // Update 4D rotation angles
+            if (rotation4D) {
+                rotationAngles.xw += rotationSpeeds.xw;
+                rotationAngles.yw += rotationSpeeds.yw;
+                rotationAngles.zw += rotationSpeeds.zw;
+                updateProjection();
+            }
+
+            // 3D rotation of visualization
+            if (pointsGroup && rotation3D) {
                 pointsGroup.rotation.y += 0.003;
                 pointsGroup.rotation.x += 0.001;
             }
