@@ -53,6 +53,10 @@ class SimulationParams:
     # Random seed for reproducibility
     random_seed: Optional[int] = None  # If None, uses random seed
 
+    # Initial condition type
+    initial_condition_type: str = "uniform_noise"  # Options: "uniform_noise", "gaussian", "imaginary_time"
+    imag_time_steps: int = 1000  # Number of imaginary time steps (if using imaginary_time)
+
     def __post_init__(self):
         self.box_size = self.R * 1.2  # Slightly larger than R
         self.dx = 2 * self.box_size / self.N  # Lattice spacing
@@ -142,6 +146,19 @@ class HypersphereBEC:
 
     def _initialize_wavefunction(self):
         """Initialize the BEC order parameter ψ"""
+        print(f"  Initializing wavefunction: {self.p.initial_condition_type}")
+
+        if self.p.initial_condition_type == "uniform_noise":
+            self._initialize_uniform_noise()
+        elif self.p.initial_condition_type == "gaussian":
+            self._initialize_gaussian()
+        elif self.p.initial_condition_type == "imaginary_time":
+            self._initialize_imaginary_time()
+        else:
+            raise ValueError(f"Unknown initial condition type: {self.p.initial_condition_type}")
+
+    def _initialize_uniform_noise(self):
+        """Initialize with uniform amplitude + small random perturbations"""
         self.psi = cp.ones(self.n_active, dtype=cp.complex128)
 
         # Add small random perturbations
@@ -149,6 +166,67 @@ class HypersphereBEC:
         noise = noise_amplitude * (cp.random.randn(self.n_active) +
                                    1j * cp.random.randn(self.n_active))
         self.psi += noise
+        print(f"    Uniform noise: amplitude=1.0, noise={noise_amplitude}")
+
+    def _initialize_gaussian(self):
+        """Initialize with a Gaussian wavepacket centered on the north pole"""
+        # North pole is at w = R, x = y = z = 0
+        # We'll create a Gaussian blob in 4D space
+        coords_centered = self.coords_gpu.copy()
+        coords_centered[:, 0] -= self.p.R  # Shift so north pole is at origin
+
+        r_from_north = cp.sqrt(cp.sum(coords_centered**2, axis=1))
+        sigma = self.p.delta * 2  # Gaussian width ~ 2*shell thickness
+
+        # Gaussian envelope
+        amplitude = cp.exp(-r_from_north**2 / (2 * sigma**2))
+
+        # Add small random phase
+        phase = 0.01 * cp.random.randn(self.n_active)
+        self.psi = amplitude * cp.exp(1j * phase)
+
+        # Normalize
+        norm = cp.sqrt(cp.sum(cp.abs(self.psi)**2))
+        self.psi /= norm
+        self.psi *= cp.sqrt(self.n_active)  # Restore total density
+
+        print(f"    Gaussian blob: centered at north pole, σ={sigma:.1f} ξ")
+
+    def _initialize_imaginary_time(self):
+        """Find ground state using imaginary time evolution"""
+        print(f"    Running imaginary time evolution for {self.p.imag_time_steps} steps...")
+
+        # Start with uniform + noise
+        self.psi = cp.ones(self.n_active, dtype=cp.complex128)
+        noise_amplitude = 0.01
+        noise = noise_amplitude * (cp.random.randn(self.n_active) +
+                                   1j * cp.random.randn(self.n_active))
+        self.psi += noise
+
+        # Imaginary time evolution: ψ(t+dt) = ψ(t) - dt*H*ψ(t), then normalize
+        dt_imag = 0.01
+
+        for step in range(self.p.imag_time_steps):
+            # Compute energy terms (same as real time, but no rotation)
+            laplacian = self.compute_laplacian()
+            kinetic_term = -0.5 * laplacian
+
+            density = cp.abs(self.psi)**2
+            interaction_term = self.p.g * density * self.psi
+
+            # Imaginary time step (gradient descent in energy)
+            self.psi -= dt_imag * (kinetic_term + interaction_term)
+
+            # Renormalize
+            norm = cp.sqrt(cp.sum(cp.abs(self.psi)**2))
+            self.psi /= norm
+            self.psi *= cp.sqrt(self.n_active)
+
+            if step % 200 == 0:
+                energy = cp.sum(cp.abs(kinetic_term + interaction_term)**2)
+                print(f"      Step {step}/{self.p.imag_time_steps}, Energy: {float(energy):.6e}")
+
+        print(f"    Ground state found!")
 
     def compute_gradient(self, field, axis):
         """Compute gradient along specified axis using neighbor interpolation"""
@@ -646,7 +724,7 @@ class HypersphereBEC:
     def save_initial_state(self, filename=None):
         """Save initial state for reproducibility"""
         if filename is None:
-            filename = f"initial_state_{self.p.random_seed}.pkl"
+            filename = f"initial_state_N{self.p.N}_seed{self.p.random_seed}.pkl"
 
         state = {
             'params': self.p,
@@ -910,7 +988,13 @@ if __name__ == "__main__":
             N=96,
             dt=0.001,
             n_neighbors=6,
-            random_seed=None
+            random_seed=None,
+            # Initial condition options:
+            # - "uniform_noise": uniform density + small random perturbations (default, fastest)
+            # - "gaussian": Gaussian blob at north pole (smooth, localized start)
+            # - "imaginary_time": ground state via imaginary time evolution (slowest, most stable)
+            initial_condition_type="uniform_noise",
+            imag_time_steps=1000  # Only used if initial_condition_type="imaginary_time"
         )
 
         sim = HypersphereBEC(params)
@@ -928,12 +1012,12 @@ if __name__ == "__main__":
             print("Simulation stable! Exporting snapshots...")
 
             # Export full snapshot set
-            set_output_file = f'snapshot_set_{sim.p.random_seed}.json'
+            set_output_file = f'snapshot_set_N{sim.p.N}_seed{sim.p.random_seed}.json'
             export_snapshots_to_json(snapshots, sim.p, set_output_file, downsample=8)
 
             print(f"\nFiles created:")
             print(f"  Snapshot set: {set_output_file}")
-            print(f"\nTo reuse these initial conditions: python sim_v005.py --load initial_state_{sim.p.random_seed}.pkl")
+            print(f"\nTo reuse these initial conditions: python sim_v005.py --load initial_state_N{sim.p.N}_seed{sim.p.random_seed}.pkl")
         else:
             print("\nSimulation became unstable.")
             print(f"Random seed {sim.p.random_seed} produced unstable initial conditions.")
