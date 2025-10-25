@@ -310,8 +310,9 @@
             zw: 0
         };
 
-        let projectionDistance = 2.5;
-        let sphereRadius = 1.0;
+        // Projection distance scaled to match simulation coordinates (~1000)
+        let projectionDistance = 2500; // 2.5 * 1000
+        let sphereRadius = 1.0; // Will be updated from simulation data
 
         // NOTE for v2: Add global subsampling parameter here
         // let subsampleFactor = 1;
@@ -423,10 +424,10 @@
 
             // Extract sphere radius from first snapshot
             const firstSnapshot = simulationData.snapshots[0];
-            sphereRadius = simulationData.parameters.R / 1000; // Normalize to ~1
+            sphereRadius = simulationData.parameters.R; // Keep at simulation scale!
 
             console.log(`Loaded ${simulationData.snapshots.length} snapshots`);
-            console.log(`Sphere radius: ${simulationData.parameters.R}, normalized to: ${sphereRadius}`);
+            console.log(`Sphere radius (4D): ${sphereRadius}`);
 
             // Show UI
             document.getElementById('fileUpload').style.display = 'none';
