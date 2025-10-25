@@ -177,9 +177,11 @@
             <span class="stat-value" id="healingLength">-</span>
         </div>
         <p style="font-size: 11px; color: #666; margin-top: 10px; border-top: 1px solid #333; padding-top: 8px;">
-            <strong>Color:</strong> Superfluid phase angle<br>
+            <strong>Superfluid Color:</strong> Phase angle<br>
             <strong>Brightness:</strong> Local density<br>
-            <strong>Vortices:</strong> Black cores (topological defects)
+            <strong>Vortices:</strong> Black cores (topological defects)<br>
+            <span style="color: #ff4444;">Red = Northern hemisphere</span> (w &gt; 0)<br>
+            <span style="color: #4488ff;">Blue = Southern hemisphere</span> (w &lt; 0)
         </p>
     </div>
 
@@ -549,23 +551,32 @@
             vortices.forEach(vortex => {
                 const pos4D = vortex.position;
 
-                // Create black sphere
+                // Determine hemisphere based on w-coordinate (4th dimension)
+                const w_coord = pos4D[3];
+                const isNorthern = w_coord >= 0;
+
+                // Hemisphere colors: Red = North (w > 0), Blue = South (w < 0)
+                const hemisphereColor = isNorthern ? 0xff0000 : 0x0088ff;
+                const hemisphereName = isNorthern ? 'N' : 'S';
+
+                // Create black core with hemisphere-colored glow
                 const coreGeometry = new THREE.SphereGeometry(0.03 * vortexSizeParam, 16, 16);
                 const coreMaterial = new THREE.MeshStandardMaterial({
                     color: 0x000000,
-                    emissive: 0x000000,
+                    emissive: hemisphereColor,
+                    emissiveIntensity: 0.3,
                     metalness: 0.8,
                     roughness: 0.2
                 });
                 const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
 
-                // Create white border (slightly larger sphere wireframe)
+                // Create hemisphere-colored border (wireframe)
                 const borderGeometry = new THREE.SphereGeometry(0.035 * vortexSizeParam, 16, 16);
                 const borderMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
+                    color: hemisphereColor,
                     wireframe: true,
                     transparent: true,
-                    opacity: 0.6
+                    opacity: 0.8
                 });
                 const borderMesh = new THREE.Mesh(borderGeometry, borderMaterial);
 
@@ -573,6 +584,7 @@
                 vortexContainer.add(coreMesh);
                 vortexContainer.add(borderMesh);
                 vortexContainer.userData.position4D = pos4D;
+                vortexContainer.userData.hemisphere = hemisphereName;
 
                 vortexGroup.add(vortexContainer);
             });

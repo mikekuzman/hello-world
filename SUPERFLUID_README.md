@@ -77,10 +77,13 @@ This creates: `snapshot_set_<seed>.json`
 - Points form the condensate "background"
 
 ### Vortices
-- **Black spheres** with **white wireframe borders**
+- **Black cores** with **colored wireframe borders**
+- **Red glow/border** = Northern hemisphere (w > 0)
+- **Blue glow/border** = Southern hemisphere (w < 0)
 - Mark topological defects where superfluid density → 0
 - Vortices have quantized circulation (quantum numbers)
 - Form when the hypersphere rotates fast enough (centrifugal instability)
+- Hemisphere coloring helps track vortex distribution across the 4D shell
 
 ### 4D Poles
 - **N (Red)**: North pole at w = +R
