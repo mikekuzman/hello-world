@@ -108,30 +108,52 @@ class HypersphereBEC:
         print(f"  Memory estimate: ~{self.n_active * 100 / 1e6:.1f} MB")
 
     def _find_shell_points(self):
-        """Identify shell points without allocating full 4D grid"""
-        print("  Scanning for shell points...")
+        """Identify shell points without allocating full 4D grid (vectorized)"""
+        print("  Scanning for shell points (vectorized)...")
 
         x = np.linspace(-self.p.box_size, self.p.box_size, self.p.N)
         r_inner = self.p.R - self.p.delta / 2
         r_outer = self.p.R + self.p.delta / 2
 
+        # Chunked vectorization to avoid memory explosion
+        # Process w-dimension in chunks, vectorize x,y,z dimensions
+        chunk_size = 8  # Process 8 w-values at a time
         shell_points = []
 
-        for i, wi in enumerate(x):
-            if i % 20 == 0:
-                print(f"    Progress: {i}/{self.p.N}")
-            for j, xj in enumerate(x):
-                for k, yk in enumerate(x):
-                    for l, zl in enumerate(x):
-                        r = np.sqrt(wi**2 + xj**2 + yk**2 + zl**2)
-                        if r_inner <= r <= r_outer:
-                            shell_points.append([wi, xj, yk, zl])
+        # Pre-compute x,y,z grids (reused for each w chunk)
+        xv, yv, zv = np.meshgrid(x, x, x, indexing='ij')
 
-        self.n_active = len(shell_points)
+        for chunk_start in range(0, self.p.N, chunk_size):
+            chunk_end = min(chunk_start + chunk_size, self.p.N)
+            w_chunk = x[chunk_start:chunk_end]
+
+            # Vectorized computation for this w-chunk
+            for wi in w_chunk:
+                # Broadcast w across the 3D grid
+                r = np.sqrt(wi**2 + xv**2 + yv**2 + zv**2)
+
+                # Find all points in the shell
+                mask = (r >= r_inner) & (r <= r_outer)
+
+                # Extract coordinates where mask is True
+                w_vals = np.full(mask.sum(), wi)
+                x_vals = xv[mask]
+                y_vals = yv[mask]
+                z_vals = zv[mask]
+
+                # Stack into (n_points, 4) array and append
+                chunk_points = np.column_stack([w_vals, x_vals, y_vals, z_vals])
+                shell_points.append(chunk_points)
+
+            if chunk_end % 20 == 0 or chunk_end == self.p.N:
+                print(f"    Progress: {chunk_end}/{self.p.N}")
+
+        # Concatenate all chunks
+        self.coords = np.vstack(shell_points) if shell_points else np.empty((0, 4))
+        self.n_active = len(self.coords)
         print(f"  Found {self.n_active:,} shell points")
 
-        # Store as numpy array (coords in 4D space)
-        self.coords = np.array(shell_points, dtype=np.float64)
+        # Store on GPU
         self.coords_gpu = cp.asarray(self.coords)
 
     def _build_neighbor_tree(self):
