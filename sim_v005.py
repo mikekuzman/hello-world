@@ -778,15 +778,30 @@ class HypersphereBEC:
 
     @classmethod
     def load_initial_state(cls, filename):
-        """Load initial state from file"""
+        """Load initial state from file (fast - uses cached data)"""
         print(f"Loading initial state from {filename}...")
         with open(filename, 'rb') as f:
             state = pickle.load(f)
 
-        sim = cls(state['params'])
+        # Create instance without calling __init__ (bypasses expensive recomputation)
+        sim = cls.__new__(cls)
+        sim.p = state['params']
+
+        # Load pre-computed data from pickle (already scanned and processed!)
+        sim.coords = state['coords']
+        sim.n_active = len(sim.coords)
+        sim.neighbor_indices = state['neighbor_indices']
+        sim.neighbor_distances = state['neighbor_distances']
+
+        # Transfer to GPU
+        sim.coords_gpu = cp.asarray(sim.coords)
+        sim.neighbor_indices_gpu = cp.asarray(sim.neighbor_indices)
+        sim.neighbor_distances_gpu = cp.asarray(sim.neighbor_distances)
         sim.psi = cp.asarray(state['psi_initial'])
 
         print(f"Initial state loaded successfully!")
+        print(f"  Active shell points: {sim.n_active:,}")
+        print(f"  Skipped shell scanning and neighbor tree (loaded from cache)")
         return sim
 
 
