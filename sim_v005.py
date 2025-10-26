@@ -33,6 +33,15 @@ from typing import Tuple, Optional
 from dataclasses import dataclass
 from scipy.spatial import cKDTree
 
+# Optional: MessagePack for compact binary export (install with: pip install msgpack)
+try:
+    import msgpack
+    HAS_MSGPACK = True
+except ImportError:
+    HAS_MSGPACK = False
+    print("Warning: msgpack not installed. MessagePack export will not be available.")
+    print("Install with: pip install msgpack")
+
 @dataclass
 class SimulationParams:
     """Parameters for 4D hypersphere BEC simulation"""
@@ -968,6 +977,212 @@ def export_snapshots_to_json(snapshots, params, output_file, downsample=10, max_
     return snapshot_set
 
 
+def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, max_density_percentile=99):
+    """
+    Export multiple snapshots to a single MessagePack file for web visualization
+
+    VERSION 005: MessagePack binary format - ~5-10x smaller than JSON, faster parsing
+    - Same data structure as JSON export
+    - Binary encoding for compact size
+    - Perfect for large datasets (GB+ range)
+
+    Args:
+        snapshots: list of snapshot dicts
+        params: SimulationParams object
+        output_file: path to output .msgpack file
+        downsample: reduce points by this factor
+        max_density_percentile: cap extreme densities at this percentile
+    """
+
+    if not HAS_MSGPACK:
+        print("ERROR: msgpack not installed. Install with: pip install msgpack")
+        print("Falling back to JSON export...")
+        json_file = output_file.replace('.msgpack', '.json')
+        return export_snapshots_to_json(snapshots, params, json_file, downsample, max_density_percentile)
+
+    print(f"Exporting snapshot set with {len(snapshots)} snapshots (v005 MessagePack format)...")
+    print("  v005: RAW density values + MessagePack binary encoding")
+
+    # Process each snapshot (same logic as JSON)
+    processed_snapshots = []
+
+    for snap_idx, snapshot in enumerate(snapshots):
+        print(f"  Processing snapshot {snap_idx + 1}/{len(snapshots)} (step {snapshot['step']})...")
+
+        # Downsample
+        coords = snapshot['coords'][::downsample]
+        density = snapshot['density'][::downsample]
+        phase = snapshot['phase'][::downsample]
+        velocity = snapshot['velocity'][::downsample]
+        vortices = snapshot['vortices'][::downsample]
+
+        # Cap extreme densities at percentile
+        density_max_cap = np.percentile(density, max_density_percentile)
+        density_capped = np.clip(density, 0, density_max_cap)
+
+        # Phase normalization to [0, 1]
+        phase_norm = (phase + np.pi) / (2 * np.pi)
+
+        # Split into vortex and non-vortex points
+        vortex_mask = vortices.astype(bool)
+        non_vortex_mask = ~vortex_mask
+
+        # Create vortex data
+        vortex_quantum_data = []
+        if 'vortex_clusters' in snapshot and len(snapshot['vortex_clusters']) > 0:
+            for cluster in snapshot['vortex_clusters']:
+                pos = cluster['center_of_mass']
+                rep_idx = cluster['representative_idx']
+                if rep_idx // downsample < len(velocity):
+                    vel = velocity[rep_idx // downsample]
+                else:
+                    vel = np.zeros(4)
+
+                vortex_quantum_data.append({
+                    'position': pos.tolist(),
+                    'quantum_number': int(cluster['quantum_number']),
+                    'velocity': vel.tolist(),
+                    'n_core_points': int(cluster['n_points'])
+                })
+        else:
+            # Fallback method
+            vortex_coords = coords[vortex_mask]
+            vortex_velocities = velocity[vortex_mask]
+            if len(vortex_coords) > 0:
+                for i, (pos, vel) in enumerate(zip(vortex_coords, vortex_velocities)):
+                    vel_mag = np.linalg.norm(vel)
+                    quantum_est = 1 if vel_mag > 0.01 else 0
+                    vortex_quantum_data.append({
+                        'position': pos.tolist(),
+                        'quantum_number': quantum_est,
+                        'velocity': vel.tolist()
+                    })
+
+        # Extract phonon and roton data
+        phonon_data = snapshot.get('phonon_data', {})
+        roton_data = snapshot.get('roton_data', {})
+
+        # Downsample rotons
+        roton_export_data = []
+        if 'roton_positions' in roton_data and len(roton_data['roton_positions']) > 0:
+            roton_downsample = max(1, len(roton_data['roton_positions']) // 100)
+            roton_positions_sampled = roton_data['roton_positions'][::roton_downsample]
+            roton_export_data = roton_positions_sampled.tolist()
+
+        # Compute statistics
+        density_bulk = density_capped[non_vortex_mask]
+        phase_bulk = phase[non_vortex_mask]
+        velocity_bulk = velocity[non_vortex_mask]
+
+        density_p5 = float(np.percentile(density_bulk, 5))
+        density_p95 = float(np.percentile(density_bulk, 95))
+        density_mean = float(np.mean(density_bulk))
+        density_std = float(np.std(density_bulk))
+        density_min = float(np.min(density_bulk))
+        density_max = float(np.max(density_bulk))
+
+        phase_mean = float(np.mean(phase_bulk))
+        phase_std = float(np.std(phase_bulk))
+
+        velocity_magnitudes = np.linalg.norm(velocity_bulk, axis=1)
+        velocity_mean = float(np.mean(velocity_magnitudes))
+        velocity_std = float(np.std(velocity_magnitudes))
+        velocity_max = float(np.max(velocity_magnitudes))
+
+        print(f"    Density: [{density_p5:.4f}, {density_p95:.4f}] (p5-p95), mean={density_mean:.4f}")
+
+        # Create snapshot data
+        snapshot_data = {
+            'metadata': {
+                'step': int(snapshot['step']),
+                'n_points': len(coords),
+                'n_vortices': len(vortex_quantum_data),
+                'n_rotons': roton_data.get('roton_count', 0),
+                'downsample_factor': downsample,
+                'coords_format': '4D'
+            },
+            'superfluid': {
+                'positions': coords[non_vortex_mask].tolist(),
+                'density': density_capped[non_vortex_mask].tolist(),
+                'phase': phase_norm[non_vortex_mask].tolist(),
+                'velocity': velocity[non_vortex_mask].tolist()
+            },
+            'statistics': {
+                'density': {
+                    'min': density_min,
+                    'max': density_max,
+                    'mean': density_mean,
+                    'std': density_std,
+                    'p5': density_p5,
+                    'p95': density_p95
+                },
+                'phase': {
+                    'mean': phase_mean,
+                    'std': phase_std
+                },
+                'velocity': {
+                    'mean': velocity_mean,
+                    'std': velocity_std,
+                    'max': velocity_max
+                }
+            },
+            'vortices': {
+                'data': vortex_quantum_data
+            },
+            'phonons': {
+                'sound_speed': phonon_data.get('sound_speed', 0.0),
+                'healing_length': phonon_data.get('healing_length', 0.0),
+                'mean_density': phonon_data.get('mean_density', 0.0),
+                'density_fluctuation_rms': phonon_data.get('density_fluctuation_rms', 0.0),
+                'velocity_rms': phonon_data.get('velocity_rms', 0.0),
+                'phonon_energy_scale': phonon_data.get('phonon_energy_scale', 0.0)
+            },
+            'rotons': {
+                'count': roton_data.get('roton_count', 0),
+                'positions': roton_export_data,
+                'characteristic_wavelength': roton_data.get('characteristic_wavelength', 0.0),
+                'roton_density_mean': roton_data.get('roton_density_mean', 0.0)
+            }
+        }
+
+        processed_snapshots.append(snapshot_data)
+
+    # Create snapshot set data structure
+    snapshot_set = {
+        'format': 'snapshot_set_v005_msgpack',
+        'version': '005',
+        'description': 'v005: RAW density values + MessagePack binary format',
+        'parameters': {
+            'R': float(params.R),
+            'delta': float(params.delta),
+            'g': float(params.g),
+            'omega': float(params.omega),
+            'N': int(params.N),
+            'dt': float(params.dt),
+            'n_neighbors': int(params.n_neighbors),
+            'random_seed': int(params.random_seed) if params.random_seed else None
+        },
+        'snapshots': processed_snapshots,
+        'summary': {
+            'n_snapshots': len(snapshots),
+            'step_range': [int(snapshots[0]['step']), int(snapshots[-1]['step'])],
+            'total_points': sum(len(snap['coords']) for snap in snapshots),
+            'downsample_factor': downsample
+        }
+    }
+
+    # Write to MessagePack binary file
+    print(f"  Writing snapshot set to {output_file}...")
+    with open(output_file, 'wb') as f:
+        msgpack.pack(snapshot_set, f, use_bin_type=True)
+
+    file_size = os.path.getsize(output_file) / (1024 * 1024)
+    print(f"  Done! Snapshot set file size: {file_size:.1f} MB (MessagePack)")
+    print(f"  Contains {len(snapshots)} snapshots from step {snapshots[0]['step']} to {snapshots[-1]['step']}")
+
+    return snapshot_set
+
+
 # Example usage
 if __name__ == "__main__":
     import sys
@@ -1011,9 +1226,9 @@ if __name__ == "__main__":
         if not np.isnan(final_density.mean()) and final_density.max() < 1e6:
             print("Simulation stable! Exporting snapshots...")
 
-            # Export full snapshot set
-            set_output_file = f'snapshot_set_N{sim.p.N}_seed{sim.p.random_seed}.json'
-            export_snapshots_to_json(snapshots, sim.p, set_output_file, downsample=8)
+            # Export full snapshot set (MessagePack format)
+            set_output_file = f'snapshot_set_N{sim.p.N}_seed{sim.p.random_seed}.msgpack'
+            export_snapshots_to_msgpack(snapshots, sim.p, set_output_file, downsample=8)
 
             print(f"\nFiles created:")
             print(f"  Snapshot set: {set_output_file}")
