@@ -29,6 +29,7 @@ import cupy as cp
 import pickle
 import os
 import json
+import time
 from typing import Tuple, Optional
 from dataclasses import dataclass
 from scipy.spatial import cKDTree
@@ -110,6 +111,7 @@ class HypersphereBEC:
     def _find_shell_points(self):
         """Identify shell points without allocating full 4D grid (vectorized)"""
         print("  Scanning for shell points (vectorized)...")
+        t_start = time.time()
 
         x = np.linspace(-self.p.box_size, self.p.box_size, self.p.N)
         r_inner = self.p.R - self.p.delta / 2
@@ -151,7 +153,9 @@ class HypersphereBEC:
         # Concatenate all chunks
         self.coords = np.vstack(shell_points) if shell_points else np.empty((0, 4))
         self.n_active = len(self.coords)
-        print(f"  Found {self.n_active:,} shell points")
+
+        t_elapsed = time.time() - t_start
+        print(f"  Found {self.n_active:,} shell points in {t_elapsed:.2f}s")
 
         # Store on GPU
         self.coords_gpu = cp.asarray(self.coords)
@@ -159,6 +163,8 @@ class HypersphereBEC:
     def _build_neighbor_tree(self):
         """Build KD-tree for fast neighbor lookup"""
         print("  Building neighbor tree...")
+        t_start = time.time()
+
         self.tree = cKDTree(self.coords)
 
         # Find nearest neighbors for each point
@@ -172,8 +178,9 @@ class HypersphereBEC:
         self.neighbor_indices_gpu = cp.asarray(self.neighbor_indices)
         self.neighbor_distances_gpu = cp.asarray(self.neighbor_distances)
 
+        t_elapsed = time.time() - t_start
         avg_dist = np.mean(self.neighbor_distances)
-        print(f"  Average neighbor distance: {avg_dist:.3f} ξ")
+        print(f"  Average neighbor distance: {avg_dist:.3f} ξ ({t_elapsed:.2f}s)")
 
     def _initialize_wavefunction(self):
         """Initialize the BEC order parameter ψ"""
@@ -683,11 +690,20 @@ class HypersphereBEC:
         print(f"  Expected vortex nucleation timescale: ~{1.0/self.p.omega:.1f} steps")
 
         snapshots = []
+        t_sim_start = time.time()
+        t_last_report = t_sim_start
+        steps_since_report = 0
 
         for step in range(n_steps):
+            t_step_start = time.time()
             self.evolve_step()
+            cp.cuda.Stream.null.synchronize()  # Wait for GPU to finish
+            t_step_elapsed = time.time() - t_step_start
+
+            steps_since_report += 1
 
             if step % save_every == 0:
+                t_save_start = time.time()
                 # Save snapshot to CPU
                 density = cp.asnumpy(self.get_density())
                 phase = cp.asnumpy(self.get_phase())
@@ -746,14 +762,26 @@ class HypersphereBEC:
                 c_s = phonon_data['sound_speed']
                 xi_heal = phonon_data['healing_length']
 
+                t_save_elapsed = time.time() - t_save_start
+                t_since_last = time.time() - t_last_report
+                steps_per_sec = steps_since_report / t_since_last if t_since_last > 0 else 0
+
                 print(f"  Step {step:5d}: <ρ>={avg_density:.3f}, c_s={c_s:.3f}, ξ={xi_heal:.2f}, "
                       f"vortices={n_vortex_lines} ({qn_summary}), rotons={n_rotons}")
+                print(f"    Timing: {steps_per_sec:.1f} steps/s (snapshot save: {t_save_elapsed:.2f}s, step: {t_step_elapsed*1000:.1f}ms)")
+
+                t_last_report = time.time()
+                steps_since_report = 0
 
                 # Check for numerical instability
                 if np.isnan(avg_density) or max_density > 1e6:
                     print(f"\n  WARNING: Numerical instability detected at step {step}!")
                     print(f"  Random seed was: {self.p.random_seed}")
                     break
+
+        t_sim_elapsed = time.time() - t_sim_start
+        avg_steps_per_sec = n_steps / t_sim_elapsed if t_sim_elapsed > 0 else 0
+        print(f"\n  Simulation complete: {n_steps} steps in {t_sim_elapsed:.1f}s ({avg_steps_per_sec:.1f} steps/s)")
 
         return snapshots
 
