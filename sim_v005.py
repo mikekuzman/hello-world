@@ -43,7 +43,7 @@ class SimulationParams:
     omega: float = 0.03         # Rotation rate (moderate)
 
     # Computational parameters
-    N: int = 96                 # Grid points per dimension
+    N: int = 128                 # Grid points per dimension
     dt: float = 0.001           # Time step
     n_neighbors: int = 6        # Number of neighbors for gradient calculation
 
@@ -54,7 +54,7 @@ class SimulationParams:
     random_seed: Optional[int] = None  # If None, uses random seed
 
     # Initial condition type
-    initial_condition_type: str = "uniform_noise"  # Options: "uniform_noise", "gaussian", "imaginary_time"
+    initial_condition_type: str = "imaginary_time"  # Options: "uniform_noise", "gaussian", "imaginary_time"
     imag_time_steps: int = 1000  # Number of imaginary time steps (if using imaginary_time)
 
     def __post_init__(self):
@@ -985,7 +985,7 @@ if __name__ == "__main__":
             delta=25.0,
             g=0.05,
             omega=0.03,
-            N=96,
+            N=128,
             dt=0.001,
             n_neighbors=6,
             random_seed=None,
@@ -993,7 +993,7 @@ if __name__ == "__main__":
             # - "uniform_noise": uniform density + small random perturbations (default, fastest)
             # - "gaussian": Gaussian blob at north pole (smooth, localized start)
             # - "imaginary_time": ground state via imaginary time evolution (slowest, most stable)
-            initial_condition_type="uniform_noise",
+            initial_condition_type="imaginary_time",
             imag_time_steps=1000  # Only used if initial_condition_type="imaginary_time"
         )
 
