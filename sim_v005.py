@@ -1027,16 +1027,16 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
         vortex_mask = vortices.astype(bool)
         non_vortex_mask = ~vortex_mask
 
-        # Create vortex data
+        # Create vortex data (use float32 for memory efficiency)
         vortex_quantum_data = []
         if 'vortex_clusters' in snapshot and len(snapshot['vortex_clusters']) > 0:
             for cluster in snapshot['vortex_clusters']:
-                pos = cluster['center_of_mass']
+                pos = cluster['center_of_mass'].astype(np.float32)
                 rep_idx = cluster['representative_idx']
                 if rep_idx // downsample < len(velocity):
-                    vel = velocity[rep_idx // downsample]
+                    vel = velocity[rep_idx // downsample].astype(np.float32)
                 else:
-                    vel = np.zeros(4)
+                    vel = np.zeros(4, dtype=np.float32)
 
                 vortex_quantum_data.append({
                     'position': pos.tolist(),
@@ -1046,8 +1046,8 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
                 })
         else:
             # Fallback method
-            vortex_coords = coords[vortex_mask]
-            vortex_velocities = velocity[vortex_mask]
+            vortex_coords = coords[vortex_mask].astype(np.float32)
+            vortex_velocities = velocity[vortex_mask].astype(np.float32)
             if len(vortex_coords) > 0:
                 for i, (pos, vel) in enumerate(zip(vortex_coords, vortex_velocities)):
                     vel_mag = np.linalg.norm(vel)
@@ -1062,11 +1062,11 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
         phonon_data = snapshot.get('phonon_data', {})
         roton_data = snapshot.get('roton_data', {})
 
-        # Downsample rotons
+        # Downsample rotons (use float32 for memory efficiency)
         roton_export_data = []
         if 'roton_positions' in roton_data and len(roton_data['roton_positions']) > 0:
             roton_downsample = max(1, len(roton_data['roton_positions']) // 100)
-            roton_positions_sampled = roton_data['roton_positions'][::roton_downsample]
+            roton_positions_sampled = roton_data['roton_positions'][::roton_downsample].astype(np.float32)
             roton_export_data = roton_positions_sampled.tolist()
 
         # Compute statistics
@@ -1091,6 +1091,12 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
 
         print(f"    Density: [{density_p5:.4f}, {density_p95:.4f}] (p5-p95), mean={density_mean:.4f}")
 
+        # Convert to float32 to reduce memory usage (50% smaller)
+        coords_f32 = coords.astype(np.float32)
+        density_f32 = density_capped.astype(np.float32)
+        phase_f32 = phase_norm.astype(np.float32)
+        velocity_f32 = velocity.astype(np.float32)
+
         # Create snapshot data
         snapshot_data = {
             'metadata': {
@@ -1102,10 +1108,10 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
                 'coords_format': '4D'
             },
             'superfluid': {
-                'positions': coords[non_vortex_mask].tolist(),
-                'density': density_capped[non_vortex_mask].tolist(),
-                'phase': phase_norm[non_vortex_mask].tolist(),
-                'velocity': velocity[non_vortex_mask].tolist()
+                'positions': coords_f32[non_vortex_mask].tolist(),
+                'density': density_f32[non_vortex_mask].tolist(),
+                'phase': phase_f32[non_vortex_mask].tolist(),
+                'velocity': velocity_f32[non_vortex_mask].tolist()
             },
             'statistics': {
                 'density': {
@@ -1227,8 +1233,14 @@ if __name__ == "__main__":
             print("Simulation stable! Exporting snapshots...")
 
             # Export full snapshot set (MessagePack format)
+            # Adaptive downsampling: scale with grid size to keep file size manageable
+            # N=96 → downsample=8, N=128 → downsample=18, N=192 → downsample=46
+            downsample_base = 8
+            downsample_factor = int(downsample_base * (sim.p.N / 96) ** 1.5)
+            print(f"Adaptive downsampling for N={sim.p.N}: downsample={downsample_factor}")
+
             set_output_file = f'snapshot_set_N{sim.p.N}_seed{sim.p.random_seed}.msgpack'
-            export_snapshots_to_msgpack(snapshots, sim.p, set_output_file, downsample=8)
+            export_snapshots_to_msgpack(snapshots, sim.p, set_output_file, downsample=downsample_factor)
 
             print(f"\nFiles created:")
             print(f"  Snapshot set: {set_output_file}")
