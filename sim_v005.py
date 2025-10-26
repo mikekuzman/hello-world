@@ -25,7 +25,6 @@ WHY V005:
 """
 
 import numpy as np
-import cupy as cp
 import pickle
 import os
 import json
@@ -33,6 +32,36 @@ import time
 from typing import Tuple, Optional
 from dataclasses import dataclass
 from scipy.spatial import cKDTree
+
+# GPU/CPU mode toggle
+USE_GPU = False  # Set to False to use CPU (NumPy) instead of GPU (CuPy)
+
+if USE_GPU:
+    try:
+        import cupy as cp
+        print("Using GPU (CuPy) for computation")
+    except ImportError:
+        print("CuPy not found, falling back to CPU (NumPy)")
+        import numpy as cp
+        USE_GPU = False
+else:
+    import numpy as cp
+    print("Using CPU (NumPy) for computation")
+
+# Helper functions for GPU/CPU compatibility
+def to_device(array):
+    """Transfer array to compute device (GPU or stay on CPU)"""
+    if USE_GPU:
+        return cp.asarray(array)
+    else:
+        return np.asarray(array)
+
+def to_cpu(array):
+    """Transfer array to CPU (from GPU or stay on CPU)"""
+    if USE_GPU and hasattr(array, 'get'):
+        return array.get()
+    else:
+        return np.asarray(array)
 
 # Optional: MessagePack for compact binary export (install with: pip install msgpack)
 try:
@@ -157,8 +186,8 @@ class HypersphereBEC:
         t_elapsed = time.time() - t_start
         print(f"  Found {self.n_active:,} shell points in {t_elapsed:.2f}s")
 
-        # Store on GPU
-        self.coords_gpu = cp.asarray(self.coords)
+        # Store on compute device
+        self.coords_gpu = to_device(self.coords)
 
     def _build_neighbor_tree(self):
         """Build KD-tree for fast neighbor lookup"""
@@ -175,8 +204,8 @@ class HypersphereBEC:
         self.neighbor_distances = distances[:, 1:].astype(np.float64)
 
         # Transfer to GPU
-        self.neighbor_indices_gpu = cp.asarray(self.neighbor_indices)
-        self.neighbor_distances_gpu = cp.asarray(self.neighbor_distances)
+        self.neighbor_indices_gpu = to_device(self.neighbor_indices)
+        self.neighbor_distances_gpu = to_device(self.neighbor_distances)
 
         t_elapsed = time.time() - t_start
         avg_dist = np.mean(self.neighbor_distances)
@@ -465,7 +494,7 @@ class HypersphereBEC:
             winding = self._compute_winding_number(int(vortex_idx), phase)
 
             # Round to nearest integer
-            quantum_num = int(cp.round(cp.asarray(winding)).get())
+            quantum_num = int(float(cp.round(winding)))
             quantum_numbers.append(quantum_num)
 
         return np.array(quantum_numbers)
@@ -483,7 +512,7 @@ class HypersphereBEC:
                 - 'center_of_mass': position of cluster center
                 - 'quantum_number': circulation quantum number
         """
-        vortex_indices = cp.asnumpy(cp.where(vortex_mask)[0])
+        vortex_indices = to_cpu(cp.where(vortex_mask)[0])
 
         if len(vortex_indices) == 0:
             return []
@@ -649,7 +678,7 @@ class HypersphereBEC:
 
         roton_mask = candidate_mask & (velocity_mag > velocity_threshold)
 
-        roton_indices = cp.asnumpy(cp.where(roton_mask)[0])
+        roton_indices = to_cpu(cp.where(roton_mask)[0])
 
         if len(roton_indices) == 0:
             return {
@@ -697,7 +726,8 @@ class HypersphereBEC:
         for step in range(n_steps):
             t_step_start = time.time()
             self.evolve_step()
-            cp.cuda.Stream.null.synchronize()  # Wait for GPU to finish
+            if USE_GPU:
+                cp.cuda.Stream.null.synchronize()  # Wait for GPU to finish
             t_step_elapsed = time.time() - t_step_start
 
             steps_since_report += 1
@@ -705,14 +735,14 @@ class HypersphereBEC:
             if step % save_every == 0:
                 t_save_start = time.time()
                 # Save snapshot to CPU
-                density = cp.asnumpy(self.get_density())
-                phase = cp.asnumpy(self.get_phase())
-                velocity = cp.asnumpy(self.get_velocity())
+                density = to_cpu(self.get_density())
+                phase = to_cpu(self.get_phase())
+                velocity = to_cpu(self.get_velocity())
                 coords = self.coords
 
                 # Detect vortices with topological verification
                 vortex_mask = self.detect_vortices()
-                vortices = cp.asnumpy(vortex_mask)
+                vortices = to_cpu(vortex_mask)
 
                 # Cluster vortex cores into individual vortex lines
                 vortex_clusters = self.cluster_vortex_cores(vortex_mask)
@@ -794,7 +824,7 @@ class HypersphereBEC:
             'params': self.p,
             'random_seed': self.p.random_seed,
             'coords': self.coords,
-            'psi_initial': cp.asnumpy(self.psi),
+            'psi_initial': to_cpu(self.psi),
             'neighbor_indices': self.neighbor_indices,
             'neighbor_distances': self.neighbor_distances
         }
@@ -822,10 +852,10 @@ class HypersphereBEC:
         sim.neighbor_distances = state['neighbor_distances']
 
         # Transfer to GPU
-        sim.coords_gpu = cp.asarray(sim.coords)
-        sim.neighbor_indices_gpu = cp.asarray(sim.neighbor_indices)
-        sim.neighbor_distances_gpu = cp.asarray(sim.neighbor_distances)
-        sim.psi = cp.asarray(state['psi_initial'])
+        sim.coords_gpu = to_device(sim.coords)
+        sim.neighbor_indices_gpu = to_device(sim.neighbor_indices)
+        sim.neighbor_distances_gpu = to_device(sim.neighbor_distances)
+        sim.psi = to_device(state['psi_initial'])
 
         print(f"Initial state loaded successfully!")
         print(f"  Active shell points: {sim.n_active:,}")
