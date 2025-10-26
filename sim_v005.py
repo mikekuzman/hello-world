@@ -1233,14 +1233,8 @@ if __name__ == "__main__":
             print("Simulation stable! Exporting snapshots...")
 
             # Export full snapshot set (MessagePack format)
-            # Adaptive downsampling: scale with grid size to keep file size manageable
-            # N=96 → downsample=8, N=128 → downsample=18, N=192 → downsample=46
-            downsample_base = 8
-            downsample_factor = int(downsample_base * (sim.p.N / 96) ** 1.5)
-            print(f"Adaptive downsampling for N={sim.p.N}: downsample={downsample_factor}")
-
             set_output_file = f'snapshot_set_N{sim.p.N}_seed{sim.p.random_seed}.msgpack'
-            export_snapshots_to_msgpack(snapshots, sim.p, set_output_file, downsample=downsample_factor)
+            export_snapshots_to_msgpack(snapshots, sim.p, set_output_file, downsample=8)
 
             print(f"\nFiles created:")
             print(f"  Snapshot set: {set_output_file}")
