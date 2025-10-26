@@ -1042,7 +1042,23 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
         json_file = output_file.replace('.msgpack', '.json')
         return export_snapshots_to_json(snapshots, params, json_file, downsample, max_density_percentile)
 
+    # Estimate memory requirements
+    n_snapshots = len(snapshots)
+    avg_points = np.mean([len(snap['coords']) for snap in snapshots])
+    points_after_downsample = avg_points / downsample
+    bytes_per_point = 10 * 4  # (4 coords + 1 density + 1 phase + 4 velocity) × 4 bytes (float32)
+    estimated_memory_gb = (n_snapshots * points_after_downsample * bytes_per_point) / 1e9
+
     print(f"Exporting snapshot set with {len(snapshots)} snapshots (v005 MessagePack format)...")
+    print(f"  Estimated memory required: ~{estimated_memory_gb:.1f} GB")
+
+    if estimated_memory_gb > 8:
+        print(f"  WARNING: Estimated memory ({estimated_memory_gb:.1f} GB) may cause MemoryError!")
+        print(f"  Current downsample={downsample}")
+        suggested_downsample = int(downsample * np.sqrt(estimated_memory_gb / 4))
+        print(f"  Suggested downsample={suggested_downsample} to reduce memory to ~4 GB")
+        print(f"  Continuing anyway... (may fail)")
+
     print("  v005: RAW density values + MessagePack binary encoding")
 
     # Process each snapshot (same logic as JSON)
@@ -1221,14 +1237,27 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=10, m
 
     # Write to MessagePack binary file
     print(f"  Writing snapshot set to {output_file}...")
-    with open(output_file, 'wb') as f:
-        msgpack.pack(snapshot_set, f, use_bin_type=True)
+    try:
+        with open(output_file, 'wb') as f:
+            msgpack.pack(snapshot_set, f, use_bin_type=True)
 
-    file_size = os.path.getsize(output_file) / (1024 * 1024)
-    print(f"  Done! Snapshot set file size: {file_size:.1f} MB (MessagePack)")
-    print(f"  Contains {len(snapshots)} snapshots from step {snapshots[0]['step']} to {snapshots[-1]['step']}")
+        file_size = os.path.getsize(output_file) / (1024 * 1024)
+        print(f"  Done! Snapshot set file size: {file_size:.1f} MB (MessagePack)")
+        print(f"  Contains {len(snapshots)} snapshots from step {snapshots[0]['step']} to {snapshots[-1]['step']}")
 
-    return snapshot_set
+        return snapshot_set
+
+    except MemoryError:
+        print(f"\n  MemoryError: Dataset too large for MessagePack export!")
+        print(f"  Estimated memory: ~{estimated_memory_gb:.1f} GB")
+        print(f"  Falling back to JSON export with higher downsample...")
+
+        # Suggest and use higher downsample
+        new_downsample = int(downsample * np.sqrt(estimated_memory_gb / 2))
+        print(f"  Auto-adjusting: downsample {downsample} → {new_downsample}")
+
+        json_file = output_file.replace('.msgpack', '.json')
+        return export_snapshots_to_json(snapshots, params, json_file, new_downsample, max_density_percentile)
 
 
 # Example usage
