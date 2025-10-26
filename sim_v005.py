@@ -258,14 +258,19 @@ class HypersphereBEC:
         return gradient
 
     def compute_laplacian(self):
-        """Compute 4D Laplacian using neighbor interpolation"""
-        laplacian = cp.zeros(self.n_active, dtype=cp.complex128)
+        """Compute 4D Laplacian using neighbor interpolation (vectorized)"""
+        # Vectorized: process all neighbors at once instead of looping
+        # neighbor_indices_gpu shape: (n_active, n_neighbors)
+        # Fancy indexing grabs all neighbor values in one shot
+        neighbor_vals = self.psi[self.neighbor_indices_gpu]  # Shape: (n_active, n_neighbors)
+        dist_sq = self.neighbor_distances_gpu**2              # Shape: (n_active, n_neighbors)
 
-        for i in range(self.p.n_neighbors):
-            neighbor_vals = self.psi[self.neighbor_indices_gpu[:, i]]
-            dist_sq = self.neighbor_distances_gpu[:, i]**2
-            laplacian += 2.0 * (neighbor_vals - self.psi) / (dist_sq + 1e-10)
-
+        # Broadcast psi for subtraction: (n_active,) → (n_active, 1)
+        # Compute all neighbor contributions in parallel, then sum
+        laplacian = cp.sum(
+            2.0 * (neighbor_vals - self.psi[:, cp.newaxis]) / (dist_sq + 1e-10),
+            axis=1
+        )
         laplacian /= self.p.n_neighbors
 
         return laplacian
