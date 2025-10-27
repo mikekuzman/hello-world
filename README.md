@@ -9,14 +9,19 @@ Two complementary projects for visualizing 4D hypersphere geometry and physics.
 Interactive visualization of 4D Bose-Einstein Condensate simulations on a rotating hypersphere.
 
 **Features:**
-- Load simulation snapshots from `sim_v005.py`
+- Load simulation snapshots from `sim_v006.py` (or `sim_v005.py`)
 - Visualize superfluid density and phase fields
 - Detect and render quantized vortices
 - 4D viewing angles (rotate frozen snapshots in 4D)
 - Time evolution playback
+- **NEW in v006:** Energy diagnostics and conservation tracking
 - Physics-accurate representation
 
 **[→ Full Documentation](SUPERFLUID_README.md)**
+
+**Simulation:**
+- `sim_v006.py` - Latest version with energy tracking, checkpoints, and performance improvements
+- `sim_v005.py` - Previous version (not included in repo, use v006)
 
 ### 2. 📐 Static Geometry Demo
 
@@ -161,9 +166,9 @@ distance = 2.5           # Viewpoint distance (perspective only)
 ## Repository Files
 
 ### Quantum Superfluid Project
-- `superfluid_viz.html` - Interactive quantum superfluid visualizer (loads v005 JSON)
+- `superfluid_viz.html` - Interactive quantum superfluid visualizer (loads v006/v005 JSON)
 - `SUPERFLUID_README.md` - Complete documentation for superfluid visualizer
-- `sim_v005.py` - 4D BEC simulation (user-provided, not in repo)
+- `sim_v006.py` - 4D BEC simulation (VERSION 006) with energy tracking and checkpoints
 
 ### Geometry Demo Project
 - `sphere_4d_projection.py` - Main Python module with all projection logic
