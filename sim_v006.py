@@ -50,20 +50,24 @@ import os
 import sys
 
 # ============================================================================
-# CUDA COMPATIBILITY FIX
+# CUDA COMPATIBILITY FIX (GTX 1070 - Compute Capability 6.1)
 # ============================================================================
-# Force Numba to use PTX version compatible with older CUDA toolkits
-# GTX 1070 (compute capability 6.1) needs PTX <= 8.6
+# Multiple approaches to force compatible PTX version
 os.environ['NUMBA_CUDA_DEFAULT_PTX_CC'] = '6.1'
+os.environ['NUMBA_CUDA_MAX_PENDING_DEALLOCS_COUNT'] = '1'
 
 # Now import numba (after setting env var)
-from numba import cuda
+from numba import cuda, config
 import math
 import h5py
 from typing import Tuple, Optional, List, Dict
 from dataclasses import dataclass
 from scipy.spatial import cKDTree
 import time
+
+# Additional config for GTX 1070 compatibility
+# Force compilation for compute capability 6.1
+config.CUDA_DEFAULT_PTX_CC = (6, 1)
 
 # Check CUDA availability
 try:
