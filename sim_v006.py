@@ -355,6 +355,162 @@ class HypersphereBEC_v006:
         print(f"  Wavefunction layout: SoA (Struct-of-Arrays)")
         print(f"  Precision: float64 (wavefunction), float32 (coordinates)")
 
+    def evolve_step(self):
+        """
+        Single timestep using fused CUDA kernel
+
+        This is THE key optimization - entire evolution in one kernel launch.
+        V005 needed 20+ separate kernel launches per step.
+        """
+        if not HAS_CUDA:
+            raise RuntimeError("CUDA required for v006 - use sim_v005_enhanced.py for CPU")
+
+        # Transfer data to GPU if not already there
+        if not hasattr(self, 'psi_real_gpu'):
+            self.psi_real_gpu = cuda.to_device(self.psi_real)
+            self.psi_imag_gpu = cuda.to_device(self.psi_imag)
+            self.coords_gpu = cuda.to_device(self.coords)
+            self.neighbor_indices_gpu = cuda.to_device(self.neighbor_indices)
+            self.neighbor_distances_gpu = cuda.to_device(self.neighbor_distances)
+
+            # Allocate output buffers (double buffering)
+            self.output_real_gpu = cuda.device_array(self.n_active, dtype=np.float64)
+            self.output_imag_gpu = cuda.device_array(self.n_active, dtype=np.float64)
+
+        # Configure kernel launch
+        threads_per_block = 256
+        blocks_per_grid = (self.n_active + threads_per_block - 1) // threads_per_block
+
+        # Launch fused kernel
+        fused_evolve_kernel[blocks_per_grid, threads_per_block](
+            self.psi_real_gpu, self.psi_imag_gpu,
+            self.coords_gpu,
+            self.neighbor_indices_gpu,
+            self.neighbor_distances_gpu,
+            self.output_real_gpu, self.output_imag_gpu,
+            self.p.dt, self.p.omega, self.p.g,
+            self.p.n_neighbors
+        )
+
+        # Swap buffers (double buffering - no copy needed!)
+        self.psi_real_gpu, self.output_real_gpu = self.output_real_gpu, self.psi_real_gpu
+        self.psi_imag_gpu, self.output_imag_gpu = self.output_imag_gpu, self.psi_imag_gpu
+
+    def get_density(self):
+        """Return density |ψ|² (transfer from GPU)"""
+        psi_real_cpu = self.psi_real_gpu.copy_to_host()
+        psi_imag_cpu = self.psi_imag_gpu.copy_to_host()
+        return psi_real_cpu**2 + psi_imag_cpu**2
+
+    def get_phase(self):
+        """Return phase arg(ψ) (transfer from GPU)"""
+        psi_real_cpu = self.psi_real_gpu.copy_to_host()
+        psi_imag_cpu = self.psi_imag_gpu.copy_to_host()
+        return np.arctan2(psi_imag_cpu, psi_real_cpu)
+
+    def run(self, n_steps: int, save_every: int = 100):
+        """
+        Run simulation with performance tracking
+
+        Returns:
+            List of snapshot dicts (minimal data - just for benchmarking)
+        """
+        print(f"\n{'='*70}")
+        print(f"Starting simulation: {n_steps} steps")
+        print(f"{'='*70}")
+
+        snapshots = []
+        start_time = time.time()
+        last_print_time = start_time
+
+        for step in range(n_steps):
+            self.evolve_step()
+
+            # Save snapshot
+            if step % save_every == 0:
+                snapshot_start = time.time()
+
+                density = self.get_density()
+                phase = self.get_phase()
+
+                avg_density = np.mean(density)
+                min_density = np.min(density)
+                max_density = np.max(density)
+
+                snapshots.append({
+                    'step': step,
+                    'coords': self.coords,
+                    'density': density,
+                    'phase': phase,
+                })
+
+                snapshot_time = time.time() - snapshot_start
+
+                # Performance metrics
+                elapsed = time.time() - start_time
+                steps_per_sec = (step + 1) / elapsed if elapsed > 0 else 0
+                eta_seconds = (n_steps - step - 1) / steps_per_sec if steps_per_sec > 0 else 0
+
+                print(f"  Step {step:5d}: <ρ>={avg_density:.3f} [{min_density:.3f}, {max_density:.3f}] "
+                      f"| {steps_per_sec:.1f} steps/s, ETA: {eta_seconds/60:.1f}min "
+                      f"(snapshot: {snapshot_time:.2f}s)")
+
+                # Check stability
+                if np.isnan(avg_density) or max_density > 1e6:
+                    print(f"\n⚠ WARNING: Numerical instability at step {step}")
+                    break
+
+        total_time = time.time() - start_time
+        avg_steps_per_sec = n_steps / total_time
+
+        print(f"\n{'='*70}")
+        print(f"Simulation complete!")
+        print(f"  Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
+        print(f"  Average: {avg_steps_per_sec:.1f} steps/s")
+        print(f"  Target was: 50-100 steps/s")
+        print(f"  Speedup vs v005 (1.4 steps/s): {avg_steps_per_sec/1.4:.1f}x")
+        print(f"{'='*70}\n")
+
+        return snapshots
+
+
+# ============================================================================
+# MAIN - Quick test
+# ============================================================================
+
+if __name__ == "__main__":
+    print("\n" + "="*70)
+    print("sim_v006.py - High-Performance 4D BEC Simulator")
+    print("="*70 + "\n")
+
+    # Small test parameters for quick validation
+    params = SimulationParams(
+        R=200.0,          # Smaller radius for testing
+        delta=10.0,       # Thinner shell
+        g=0.05,
+        omega=0.03,
+        N=32,             # Small grid for quick test
+        dt=0.001,
+        n_neighbors=6,
+        random_seed=42,
+        initial_condition_type="uniform_noise"  # Skip imaginary time for speed
+    )
+
+    print("Creating simulator...")
+    sim = HypersphereBEC_v006(params)
+
+    print(f"\nRunning quick test (100 steps)...")
+    print("This will benchmark the fused CUDA kernel performance.\n")
+
+    snapshots = sim.run(n_steps=100, save_every=20)
+
+    print(f"\n✓ Test complete! Captured {len(snapshots)} snapshots.")
+    print(f"\nNext steps:")
+    print(f"  1. Test with larger N (64, 96, 128)")
+    print(f"  2. Implement Phase 2: HDF5 streaming export")
+    print(f"  3. Implement Phase 3: h5wasm visualization")
+
 
 # Stub for now - will implement remaining methods
-print("✓ sim_v006.py loaded - Phase 1 skeleton ready")
+print("✓ sim_v006.py loaded - Phase 1 COMPLETE")
+
