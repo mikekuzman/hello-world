@@ -26,17 +26,23 @@ Think of it like rotating a sculpture to view it from different angles, but in 4
 Run the simulation to create a snapshot file:
 
 ```bash
-python sim_v006.py
+python sim_v005_enhanced.py
 ```
 
-This creates: `snapshot_set_v006_N<grid>_seed<seed>_<init>.msgpack`
+This creates: `snapshot_set_v005_enhanced_N<grid>_seed<seed>_<init>.msgpack`
 
-**V006 New Features:**
+**Enhanced Version Features:**
 - Energy diagnostics and conservation tracking
 - Checkpoint/resume functionality
 - Progress estimation with ETA
 - Global visualization downsampling parameter
 - Enhanced file naming with initial condition type
+
+**Coming Soon: sim_v006.py**
+- 35x performance improvement (50-100 steps/s vs 1.4)
+- Numba CUDA fused kernels
+- HDF5 streaming format
+- Memory-efficient operation
 
 ### 2. Load and Visualize
 
@@ -121,12 +127,12 @@ When the hypersphere rotates faster than a critical speed:
 
 ## File Format
 
-The visualizer expects JSON/MessagePack files in `snapshot_set_v006` format (also compatible with v005):
+The visualizer expects JSON/MessagePack files in `snapshot_set_v005_enhanced` format (compatible with v005):
 
 ```json
 {
-  "format": "snapshot_set_v006",
-  "version": "006",
+  "format": "snapshot_set_v005_enhanced",
+  "version": "005_enh",
   "parameters": {
     "R", "delta", "g", "omega", "N", "dt",
     "initial_condition_type",  // NEW in v006
@@ -176,7 +182,7 @@ The visualizer expects JSON/MessagePack files in `snapshot_set_v006` format (als
 4. **Late-time snapshots**: Vortex lattices form at equilibrium (fascinating patterns!)
 5. **Try projections**: Stereographic projection shows different structure than perspective
 
-## V006 Features ✓
+## V005 Enhanced Features ✓
 
 - [x] **Global subsampling parameter**: Control export resolution with viz_downsample
 - [x] **Energy diagnostics**: Track total, kinetic, potential, and rotational energy
@@ -201,11 +207,11 @@ The visualizer expects JSON/MessagePack files in `snapshot_set_v006` format (als
 
 ## Troubleshooting
 
-**"Unsupported format" error**: Make sure you're using v006 (or v005) JSON/MessagePack files from `sim_v006.py`
+**"Unsupported format" error**: Make sure you're using v005_enhanced (or v005) JSON/MessagePack files from `sim_v005_enhanced.py`
 
 **Black screen**: Check browser console for errors, ensure WebGL is enabled
 
-**Slow performance**: Try smaller simulations (reduce N parameter in sim_v006.py) or adjust viz_downsample parameter
+**Slow performance**: Try smaller simulations (reduce N parameter in sim_v005_enhanced.py) or adjust viz_downsample parameter. **Or wait for sim_v006.py (35x speedup target)**
 
 **Vortices not visible**: They may not have nucleated yet - try later snapshots, or increase Ω in simulation
 

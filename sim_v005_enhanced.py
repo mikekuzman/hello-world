@@ -1,7 +1,7 @@
 """
-sim_v006.py - 4D Bose-Einstein Condensate Simulator (VERSION 006)
+sim_v005_enhanced.py - 4D Bose-Einstein Condensate Simulator (VERSION 005 Enhanced)
 
-V006 NEW FEATURES:
+V005 ENHANCED - NEW FEATURES:
 ==================
 1. **Global Visualization Downsampling** (`viz_downsample`)
    - Separate from simulation grid resolution
@@ -34,25 +34,24 @@ V006 NEW FEATURES:
    - Steps per second tracking
    - Memory usage monitoring
 
-EXPORT FORMAT (v006):
-=====================
+EXPORT FORMAT (v005_enhanced):
+===============================
 - All v005 features (RAW density, per-snapshot statistics)
 - NEW: Energy evolution data per snapshot
   - energy_diagnostics: { total, kinetic, potential, rotational, time }
 - NEW: Global viz_downsample parameter in metadata
-- Format version: 'snapshot_set_v006' (version '006')
+- Format version: 'snapshot_set_v005_enhanced' (version '005_enh')
 
 BACKWARDS COMPATIBILITY:
 ========================
 - Pickle files compatible with v005 (can load v005 states)
-- JSON/MessagePack format incompatible with v005 visualizers
-- Use viz_v006.html for visualization (when available)
+- JSON/MessagePack format mostly compatible with v005 visualizers
+- Enhanced format adds optional energy_data fields
 
-UPGRADE FROM V005:
-==================
-- All v005 optimizations included (vectorization, fast loading, MessagePack)
-- All v005 initial conditions supported (uniform_noise, gaussian, imaginary_time)
-- Simply replace sim_v005.py with sim_v006.py
+NOTE:
+=====
+This is v005_enhanced - an incremental feature addition to v005.
+For high-performance v006 (35x speedup via Numba CUDA), see sim_v006.py.
 """
 
 import numpy as np
@@ -97,7 +96,7 @@ class SimulationParams:
     initial_condition_type: str = "imaginary_time"  # Options: "uniform_noise", "gaussian", "imaginary_time"
     imag_time_steps: int = 1000  # Number of imaginary time steps (if using imaginary_time)
 
-    # V006: Visualization and export parameters
+    # V005_ENHANCED: Visualization and export parameters
     viz_downsample: int = 8      # Global downsample factor for exports (independent of sim grid)
     track_energy: bool = True    # Track energy diagnostics (adds ~5% overhead)
     save_checkpoints: bool = True  # Save periodic checkpoints during run
@@ -714,7 +713,7 @@ class HypersphereBEC:
         return roton_data
 
     # ========================================================================
-    # V006: Energy Diagnostics
+    # V005_ENHANCED: Energy Diagnostics
     # ========================================================================
 
     def compute_energy_diagnostics(self):
@@ -765,7 +764,7 @@ class HypersphereBEC:
         }
 
     # ========================================================================
-    # V006: Enhanced Run Method with Energy Tracking
+    # V005_ENHANCED: Enhanced Run Method with Energy Tracking
     # ========================================================================
 
     def run(self, n_steps: int, save_every: int = 100, start_step: int = 0):
@@ -788,13 +787,13 @@ class HypersphereBEC:
             print(f"  Energy tracking: ENABLED")
 
         snapshots = []
-        energy_history = []  # V006: Track energy evolution
+        energy_history = []  # V005_ENHANCED: Track energy evolution
         start_time = time.time()
 
         for step in range(n_steps):
             self.evolve_step()
 
-            # V006: Compute energy diagnostics if enabled
+            # V005_ENHANCED: Compute energy diagnostics if enabled
             if self.p.track_energy and (step % save_every == 0 or step == n_steps - 1):
                 energy_data = self.compute_energy_diagnostics()
                 energy_data['step'] = start_step + step
@@ -824,7 +823,7 @@ class HypersphereBEC:
                 # Detect rotons (R₀ excitations - matter particles)
                 roton_data = self.detect_rotons()
 
-                # V006: Get current energy data if available
+                # V005_ENHANCED: Get current energy data if available
                 current_energy = energy_history[-1] if energy_history else None
 
                 snapshots.append({
@@ -838,7 +837,7 @@ class HypersphereBEC:
                     'vortex_clusters': vortex_clusters,  # Full cluster information
                     'phonon_data': phonon_data,  # P₀ phonon analysis
                     'roton_data': roton_data,    # R₀ roton detection
-                    'energy_data': current_energy  # V006: Energy diagnostics
+                    'energy_data': current_energy  # V005_ENHANCED: Energy diagnostics
                 })
 
                 n_vortex_lines = len(vortex_clusters)
@@ -864,13 +863,13 @@ class HypersphereBEC:
                 c_s = phonon_data['sound_speed']
                 xi_heal = phonon_data['healing_length']
 
-                # V006: Progress and performance metrics
+                # V005_ENHANCED: Progress and performance metrics
                 elapsed_time = time.time() - start_time
                 steps_per_sec = (step + 1) / elapsed_time if elapsed_time > 0 else 0
                 eta_seconds = (n_steps - step - 1) / steps_per_sec if steps_per_sec > 0 else 0
                 eta_minutes = eta_seconds / 60
 
-                # V006: Build output string with energy if available
+                # V005_ENHANCED: Build output string with energy if available
                 output_str = f"  Step {start_step+step:5d}: <ρ>={avg_density:.3f}, c_s={c_s:.3f}, ξ={xi_heal:.2f}, "\
                             f"vortices={n_vortex_lines} ({qn_summary}), rotons={n_rotons}"
 
@@ -887,17 +886,17 @@ class HypersphereBEC:
                     print(f"  Random seed was: {self.p.random_seed}")
                     break
 
-            # V006: Save checkpoints periodically if enabled
+            # V005_ENHANCED: Save checkpoints periodically if enabled
             if self.p.save_checkpoints and step > 0 and step % (save_every * 10) == 0:
                 checkpoint_file = self.save_checkpoint(start_step + step, snapshots, energy_history)
                 print(f"  → Checkpoint saved: {checkpoint_file}")
 
-        # V006: Store energy history in snapshots metadata
+        # V005_ENHANCED: Store energy history in snapshots metadata
         for i, snapshot in enumerate(snapshots):
             if i < len(energy_history):
                 snapshot['energy_data'] = energy_history[i]
 
-        # V006: Print final performance summary
+        # V005_ENHANCED: Print final performance summary
         total_time = time.time() - start_time
         avg_steps_per_sec = n_steps / total_time if total_time > 0 else 0
         print(f"\nSimulation completed in {total_time/60:.1f} minutes ({avg_steps_per_sec:.1f} steps/s avg)")
@@ -952,7 +951,7 @@ class HypersphereBEC:
         return sim
 
     # ========================================================================
-    # V006: Checkpoint Save/Load
+    # V005_ENHANCED: Checkpoint Save/Load
     # ========================================================================
 
     def save_checkpoint(self, step, snapshots=None, energy_history=None, filename=None):
@@ -989,7 +988,7 @@ class HypersphereBEC:
             'neighbor_distances': self.neighbor_distances,
             'snapshots': snapshots if snapshots is not None else [],
             'energy_history': energy_history if energy_history is not None else [],
-            'version': '006'
+            'version': '005_enh'
         }
 
         with open(filename, 'wb') as f:
@@ -1058,12 +1057,12 @@ def export_snapshots_to_json(snapshots, params, output_file, downsample=None, ma
         max_density_percentile: cap extreme densities at this percentile
     """
 
-    # V006: Use viz_downsample from params if not specified
+    # V005_ENHANCED: Use viz_downsample from params if not specified
     if downsample is None:
         downsample = params.viz_downsample
 
     print(f"Exporting snapshot set with {len(snapshots)} snapshots (v006 format)...")
-    print(f"  v006: RAW density + statistics + energy diagnostics, downsample={downsample}")
+    print(f"  v005_enhanced: RAW density + statistics + energy diagnostics, downsample={downsample}")
 
     # Process each snapshot
     processed_snapshots = []
@@ -1225,9 +1224,9 @@ def export_snapshots_to_json(snapshots, params, output_file, downsample=None, ma
 
     # Create snapshot set data structure
     snapshot_set = {
-        'format': 'snapshot_set_v006',
-        'version': '006',
-        'description': 'v006: RAW density + statistics + energy diagnostics',
+        'format': 'snapshot_set_v005_enhanced',
+        'version': '005_enh',
+        'description': 'v005_enhanced: RAW density + statistics + energy diagnostics',
         'parameters': {
             'R': float(params.R),
             'delta': float(params.delta),
@@ -1238,7 +1237,7 @@ def export_snapshots_to_json(snapshots, params, output_file, downsample=None, ma
             'n_neighbors': int(params.n_neighbors),
             'random_seed': int(params.random_seed) if params.random_seed else None,
             'initial_condition_type': params.initial_condition_type,
-            'viz_downsample': downsample,  # V006: Include downsample in metadata
+            'viz_downsample': downsample,  # V005_ENHANCED: Include downsample in metadata
             'track_energy': params.track_energy
         },
         'snapshots': processed_snapshots,
@@ -1285,12 +1284,12 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=None,
         json_file = output_file.replace('.msgpack', '.json')
         return export_snapshots_to_json(snapshots, params, json_file, downsample, max_density_percentile)
 
-    # V006: Use viz_downsample from params if not specified
+    # V005_ENHANCED: Use viz_downsample from params if not specified
     if downsample is None:
         downsample = params.viz_downsample
 
     print(f"Exporting snapshot set with {len(snapshots)} snapshots (v006 MessagePack format)...")
-    print(f"  v006: RAW density + statistics + energy diagnostics, downsample={downsample}")
+    print(f"  v005_enhanced: RAW density + statistics + energy diagnostics, downsample={downsample}")
 
     # Process each snapshot (same logic as JSON)
     processed_snapshots = []
@@ -1444,9 +1443,9 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=None,
 
     # Create snapshot set data structure
     snapshot_set = {
-        'format': 'snapshot_set_v006_msgpack',
-        'version': '006',
-        'description': 'v006: RAW density + statistics + energy diagnostics + MessagePack binary',
+        'format': 'snapshot_set_v005_enhanced_msgpack',
+        'version': '005_enh',
+        'description': 'v005_enhanced: RAW density + statistics + energy diagnostics + MessagePack binary',
         'parameters': {
             'R': float(params.R),
             'delta': float(params.delta),
@@ -1457,7 +1456,7 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=None,
             'n_neighbors': int(params.n_neighbors),
             'random_seed': int(params.random_seed) if params.random_seed else None,
             'initial_condition_type': params.initial_condition_type,
-            'viz_downsample': downsample,  # V006: Include downsample in metadata
+            'viz_downsample': downsample,  # V005_ENHANCED: Include downsample in metadata
             'track_energy': params.track_energy
         },
         'snapshots': processed_snapshots,
@@ -1485,7 +1484,7 @@ def export_snapshots_to_msgpack(snapshots, params, output_file, downsample=None,
 if __name__ == "__main__":
     import sys
 
-    # V006: Support for checkpoint loading
+    # V005_ENHANCED: Support for checkpoint loading
     start_step = 0
     previous_snapshots = []
     previous_energy = []
@@ -1497,7 +1496,7 @@ if __name__ == "__main__":
             sim = HypersphereBEC.load_initial_state(filename)
 
         elif sys.argv[1] == '--checkpoint':
-            # V006: Resume from checkpoint
+            # V005_ENHANCED: Resume from checkpoint
             filename = sys.argv[2] if len(sys.argv) > 2 else None
             if filename is None:
                 print("Error: --checkpoint requires a checkpoint filename")
@@ -1538,7 +1537,7 @@ if __name__ == "__main__":
     # Run simulation
     snapshots = sim.run(n_steps=5000, save_every=500, start_step=start_step)
 
-    # V006: Combine with previous snapshots if resuming from checkpoint
+    # V005_ENHANCED: Combine with previous snapshots if resuming from checkpoint
     if previous_snapshots:
         snapshots = previous_snapshots + snapshots
 
@@ -1550,11 +1549,11 @@ if __name__ == "__main__":
         if not np.isnan(final_density.mean()) and final_density.max() < 1e6:
             print("Simulation stable! Exporting snapshots...")
 
-            # V006: Include initial condition type in filename
+            # V005_ENHANCED: Include initial condition type in filename
             init_cond_short = sim.p.initial_condition_type[:4]  # e.g., "imag", "unif", "gaus"
 
             # Export full snapshot set (MessagePack format - uses viz_downsample from params)
-            set_output_file = f'snapshot_set_v006_N{sim.p.N}_seed{sim.p.random_seed}_{init_cond_short}.msgpack'
+            set_output_file = f'snapshot_set_v005_enhanced_N{sim.p.N}_seed{sim.p.random_seed}_{init_cond_short}.msgpack'
             export_snapshots_to_msgpack(snapshots, sim.p, set_output_file)
 
             print(f"\nFiles created:")
