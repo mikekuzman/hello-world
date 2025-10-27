@@ -46,10 +46,20 @@ HARDWARE TARGET:
 """
 
 import numpy as np
+import os
+import sys
+
+# ============================================================================
+# CUDA COMPATIBILITY FIX
+# ============================================================================
+# Force Numba to use PTX version compatible with older CUDA toolkits
+# GTX 1070 (compute capability 6.1) needs PTX <= 8.6
+os.environ['NUMBA_CUDA_DEFAULT_PTX_CC'] = '6.1'
+
+# Now import numba (after setting env var)
 from numba import cuda
 import math
 import h5py
-import os
 from typing import Tuple, Optional, List, Dict
 from dataclasses import dataclass
 from scipy.spatial import cKDTree
