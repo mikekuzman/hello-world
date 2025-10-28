@@ -55,7 +55,7 @@ import sys
 # Help Numba find CUDA DLLs (nvvm.dll, etc.)
 cuda_path = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0"
 cuda_bin = os.path.join(cuda_path, "bin")
-cuda_nvvm_bin = os.path.join(cuda_path, "nvvm", "bin")
+cuda_nvvm_bin = os.path.join(cuda_path, "nvvm", "bin", "x64")  # DLL is in x64 subdirectory
 
 # Add CUDA paths to PATH and set CUDA_PATH
 if cuda_bin not in os.environ.get("PATH", ""):
