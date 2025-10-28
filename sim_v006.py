@@ -112,6 +112,26 @@ class SimulationParams:
 # V006: NUMBA CUDA FUSED EVOLUTION KERNEL
 # ============================================================================
 
+@cuda.jit(device=True, inline='always')
+def compute_laplacian_device(idx, psi_real, psi_imag, neighbor_indices, neighbor_distances, n_neighbors):
+    """Device function for Laplacian computation"""
+    psi_r = psi_real[idx]
+    psi_i = psi_imag[idx]
+
+    laplacian_r = 0.0
+    laplacian_i = 0.0
+
+    for i in range(n_neighbors):
+        neighbor_idx = neighbor_indices[idx, i]
+        neighbor_psi_r = psi_real[neighbor_idx]
+        neighbor_psi_i = psi_imag[neighbor_idx]
+        dist_sq = neighbor_distances[idx, i] * neighbor_distances[idx, i]
+        laplacian_r += 2.0 * (neighbor_psi_r - psi_r) / (dist_sq + 1e-10)
+        laplacian_i += 2.0 * (neighbor_psi_i - psi_i) / (dist_sq + 1e-10)
+
+    return laplacian_r / n_neighbors, laplacian_i / n_neighbors
+
+
 @cuda.jit
 def fused_evolve_kernel(
     psi_real, psi_imag,           # Wavefunction (SoA layout)
@@ -125,8 +145,7 @@ def fused_evolve_kernel(
     """
     Fused CUDA kernel: Laplacian + rotation + evolution in ONE pass
 
-    This is the key optimization - reduces 20+ kernel launches to 1.
-    All intermediate values stay in registers/shared memory.
+    Simplified version to avoid PTX version issues.
     """
     idx = cuda.grid(1)
 
@@ -140,120 +159,32 @@ def fused_evolve_kernel(
     # ========================================================================
     # 1. Compute Laplacian using neighbor interpolation
     # ========================================================================
-    laplacian_r = 0.0
-    laplacian_i = 0.0
-
-    for i in range(n_neighbors):
-        neighbor_idx = neighbor_indices[idx, i]
-        neighbor_psi_r = psi_real[neighbor_idx]
-        neighbor_psi_i = psi_imag[neighbor_idx]
-
-        dist_sq = neighbor_distances[idx, i] * neighbor_distances[idx, i]
-
-        laplacian_r += 2.0 * (neighbor_psi_r - psi_r) / (dist_sq + 1e-10)
-        laplacian_i += 2.0 * (neighbor_psi_i - psi_i) / (dist_sq + 1e-10)
-
-    laplacian_r /= n_neighbors
-    laplacian_i /= n_neighbors
+    laplacian_r, laplacian_i = compute_laplacian_device(
+        idx, psi_real, psi_imag, neighbor_indices, neighbor_distances, n_neighbors
+    )
 
     # ========================================================================
-    # 2. Compute rotation term: -i*Ω*L_z*ψ where L_z = w*∂_x - x*∂_w
+    # 2. Simplified evolution (first order in time)
     # ========================================================================
-    w = coords[idx, 0]
-    x = coords[idx, 1]
+    # For now, skip rotation term and just do diffusion
+    # This is a simplified version to test if PTX issues go away
 
-    # Gradient ∂ψ/∂w using neighbors
-    grad_w_r = 0.0
-    grad_w_i = 0.0
-    grad_x_r = 0.0
-    grad_x_i = 0.0
+    density = psi_r * psi_r + psi_i * psi_i
 
-    for i in range(n_neighbors):
-        neighbor_idx = neighbor_indices[idx, i]
-
-        # Coordinate differences
-        dw = w - coords[neighbor_idx, 0]
-        dx = x - coords[neighbor_idx, 1]
-
-        # Field differences
-        dpsi_r = psi_real[neighbor_idx] - psi_r
-        dpsi_i = psi_imag[neighbor_idx] - psi_i
-
-        dist = neighbor_distances[idx, i]
-        weight = 1.0 / (dist + 1e-10)
-
-        grad_w_r += dpsi_r * dw * weight
-        grad_w_i += dpsi_i * dw * weight
-        grad_x_r += dpsi_r * dx * weight
-        grad_x_i += dpsi_i * dx * weight
-
-    # Normalize gradients
-    norm_w = 0.0
-    norm_x = 0.0
-    for i in range(n_neighbors):
-        neighbor_idx = neighbor_indices[idx, i]
-        dw = w - coords[neighbor_idx, 0]
-        dx = x - coords[neighbor_idx, 1]
-        dist = neighbor_distances[idx, i]
-        weight = 1.0 / (dist + 1e-10)
-        norm_w += dw * dw * weight
-        norm_x += dx * dx * weight
-
-    grad_w_r /= (norm_w + 1e-10)
-    grad_w_i /= (norm_w + 1e-10)
-    grad_x_r /= (norm_x + 1e-10)
-    grad_x_i /= (norm_x + 1e-10)
-
-    # Angular momentum operator: L_z = w*∂_x - x*∂_w
-    Lz_psi_r = w * grad_x_r - x * grad_w_r
-    Lz_psi_i = w * grad_x_i - x * grad_w_i
-
-    # Rotation term: -i*Ω*L_z*ψ = -i*Ω*(Lz_r + i*Lz_i) = Ω*Lz_i - i*Ω*Lz_r
-    rot_r = omega * Lz_psi_i
-    rot_i = -omega * Lz_psi_r
-
-    # ========================================================================
-    # 3. Split-step evolution: exp(-i*H*dt)*ψ
-    # ========================================================================
-
-    # Step 1: Kinetic (half step) - exp(-0.5i*dt*(-0.5*Lap))
+    # Kinetic term: -0.5 * Laplacian
     kin_r = -0.5 * laplacian_r
     kin_i = -0.5 * laplacian_i
-    phase_kin = -0.5 * dt * 0.0  # Will compute magnitude
 
-    # For exp(i*phase), use rotation matrix approximation (small dt)
-    # exp(i*θ) ≈ cos(θ) + i*sin(θ) for small θ
-    # But for split-step, we use operator splitting
+    # Potential term: g * |psi|^2 * psi
+    pot_r = g * density * psi_r
+    pot_i = g * density * psi_i
 
-    # Simplified: First-order split-step
-    # ψ(t+dt) = exp(-i*V*dt) * exp(-i*T*dt) * ψ(t)
+    # First-order Euler step: psi_new = psi + dt * (-i) * (kin + pot)
+    # -i * (kin_r + i*kin_i) = -i*kin_r + kin_i = kin_i - i*kin_r
+    # So: psi_new = psi + dt * (kin_i - i*kin_r + pot_i - i*pot_r)
 
-    # Kinetic step (half): phase = -0.5*dt*(-0.5*Lap)
-    phase_k = 0.25 * dt * (laplacian_r * psi_r + laplacian_i * psi_i) / (psi_r*psi_r + psi_i*psi_i + 1e-10)
-    cos_k = math.cos(phase_k)
-    sin_k = math.sin(phase_k)
-
-    tmp_r = psi_r * cos_k - psi_i * sin_k
-    tmp_i = psi_r * sin_k + psi_i * cos_k
-
-    # Potential + rotation step (full)
-    density = tmp_r * tmp_r + tmp_i * tmp_i
-    pot = g * density
-
-    phase_p = -dt * (pot + rot_r * tmp_r + rot_i * tmp_i) / (density + 1e-10)
-    cos_p = math.cos(phase_p)
-    sin_p = math.sin(phase_p)
-
-    tmp2_r = tmp_r * cos_p - tmp_i * sin_p
-    tmp2_i = tmp_r * sin_p + tmp_i * cos_p
-
-    # Kinetic step (half) again
-    phase_k2 = 0.25 * dt * (laplacian_r * tmp2_r + laplacian_i * tmp2_i) / (tmp2_r*tmp2_r + tmp2_i*tmp2_i + 1e-10)
-    cos_k2 = math.cos(phase_k2)
-    sin_k2 = math.sin(phase_k2)
-
-    output_real[idx] = tmp2_r * cos_k2 - tmp2_i * sin_k2
-    output_imag[idx] = tmp2_r * sin_k2 + tmp2_i * cos_k2
+    output_real[idx] = psi_r + dt * (kin_i + pot_i)
+    output_imag[idx] = psi_i - dt * (kin_r + pot_r)
 
 
 # ============================================================================
