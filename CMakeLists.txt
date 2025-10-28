@@ -50,7 +50,6 @@ set(SIMULATION_SOURCES
 
 set(SIMULATION_CUDA_SOURCES
     src/simulation/cuda/evolution_kernels.cu
-    src/simulation/cuda/laplacian_kernels.cu
 )
 
 set(VISUALIZATION_SOURCES
