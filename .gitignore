@@ -416,3 +416,40 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ============================================
+# C++/CUDA Build Artifacts
+# ============================================
+
+# CMake
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# CUDA
+*.i
+*.ii
+*.gpu
+*.ptx
+*.cubin
+*.fatbin
+
+# Simulation data files
+*.h5
+*.hdf5
+*.msgpack
+
+# Generated JSON data
+sphere_4d_*.json
+snapshot_*.json
