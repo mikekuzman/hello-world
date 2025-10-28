@@ -52,20 +52,9 @@ import sys
 # ============================================================================
 # CUDA COMPATIBILITY FIX (GTX 1070 - Compute Capability 6.1)
 # ============================================================================
-# Set environment variables BEFORE any numba imports to force compatible PTX
-# GTX 1070 has compute capability 6.1 and supports PTX up to 8.6 (CUDA 11.x)
-# We need to prevent Numba from generating PTX 8.8 (CUDA 12.x)
+# With CUDA Toolkit 13+ installed, Numba can compile for older GPUs (6.1)
+# No environment variable hacks needed!
 
-os.environ['NUMBA_CUDA_DEFAULT_PTX_CC'] = '6,1'  # Compute capability as string
-os.environ['NUMBA_CUDA_MAX_PENDING_DEALLOCS_COUNT'] = '1'
-os.environ['NUMBA_CUDA_LOW_OCCUPANCY_WARNINGS'] = '0'
-
-# Try to force CUDA 11.x compatibility (PTX 8.6 instead of 8.8)
-# This prevents Numba from using CUDA 12.x features
-os.environ['CUDA_HOME'] = '/usr/local/cuda-11.0'  # Hint at older CUDA
-os.environ['NUMBA_ENABLE_CUDASIM'] = '0'  # Disable simulator
-
-# Import numba AFTER setting env vars
 from numba import cuda, config
 import math
 import h5py
@@ -74,10 +63,10 @@ from dataclasses import dataclass
 from scipy.spatial import cKDTree
 import time
 
-# Set config immediately after import, BEFORE any CUDA operations
+# Configure for GTX 1070 (compute capability 6.1)
 config.CUDA_DEFAULT_PTX_CC = (6, 1)
-config.CUDA_USE_NVIDIA_BINDING = False  # Use older driver API
-config.CUDA_ENABLE_MINOR_VERSION_COMPATIBILITY = True
+# Disable minor version compatibility (requires extra packages not available via pip)
+config.CUDA_ENABLE_MINOR_VERSION_COMPATIBILITY = False
 
 # NOW check CUDA availability (after all config is set)
 try:
