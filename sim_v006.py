@@ -52,8 +52,10 @@ import sys
 # ============================================================================
 # CUDA COMPATIBILITY FIX (GTX 1070 - Compute Capability 6.1)
 # ============================================================================
-# With CUDA Toolkit 13+ installed, Numba can compile for older GPUs (6.1)
-# No environment variable hacks needed!
+# Force Numba to generate PTX 8.6 (not 8.8) to match ptxas version
+# Must be set BEFORE importing numba
+os.environ['NUMBA_CUDA_DEFAULT_PTX_CC'] = '6.1'
+os.environ['CUDA_CC'] = '6.1'
 
 from numba import cuda, config
 import math
@@ -134,7 +136,7 @@ def compute_laplacian_device(idx, psi_real, psi_imag, neighbor_indices, neighbor
     return laplacian_r / n_neighbors, laplacian_i / n_neighbors
 
 
-@cuda.jit
+@cuda.jit('void(float64[:], float64[:], float32[:,:], int32[:,:], float32[:,:], float64[:], float64[:], float64, float64, float64, int32)', fastmath=False, opt=False)
 def fused_evolve_kernel(
     psi_real, psi_imag,           # Wavefunction (SoA layout)
     coords,                        # Point coordinates [n_active, 4]
