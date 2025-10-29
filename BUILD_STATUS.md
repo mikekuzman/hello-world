@@ -27,8 +27,13 @@
 
 ### All Commits Pushed
 - Branch: `claude/session-011CUa6avbwM5UXbe37YLEN4`
-- Latest commit: **720eac3** (Colors + Mouse controls)
+- Latest commit: **b70a2a6** (Full-scale parameters + enhanced controls)
 - Status: **FULLY FUNCTIONAL! Rainbow particles with interactive camera!**
+
+### Recent Changes:
+- **b70a2a6**: Updated to full-scale parameters (N=128, R=1000, omega=0.03)
+- **f5b6aa4**: Increased mouse sensitivity 2x, added window resize support
+- **720eac3**: Fixed particle colors (rainbow spectrum) and mouse controls
 
 ## 🔄 Rebuild Instructions
 
