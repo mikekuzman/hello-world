@@ -24,18 +24,19 @@ int main(int argc, char** argv) {
         params.N = 128;              // Grid points per dimension
         params.dt = 0.001f;          // Time step
         params.n_neighbors = 6;      // Number of neighbors for gradient calculation
+        params.snapshot_subsample = 10;  // Save 1 in 10 particles (reduces 3.8M to 380K)
         params.random_seed = 42;
         params.initial_condition_type = bec4d::SimulationParams::InitialConditionType::UniformNoise;
 
         params.updateDerived();
-        params.print();
+        // params.print() will be called inside simulation constructor
 
         app.setSimulationParams(params);
         app.setWindowSize(1920, 1080);
 
         // Run simulation BEFORE opening window
-        std::cout << "\nRunning simulation (100 steps)..." << std::endl;
-        app.startSimulation(100, 20);  // 100 steps, save every 20
+        std::cout << "\nRunning simulation (5000 steps)..." << std::endl;
+        app.startSimulation(5000, 500);  // 5000 steps, save every 500
 
         // Run application (will start simulation and visualization)
         std::cout << "\nStarting application..." << std::endl;

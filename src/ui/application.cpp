@@ -24,6 +24,7 @@ Application::Application()
     ui_state_.show_poles = true;
     ui_state_.show_axes = true;
     ui_state_.show_vortices = true;
+    ui_state_.render_subsample = 2;  // Render 1 in 2 particles (further reduces load)
     ui_state_.auto_rotate_4d = false;
     ui_state_.rotation_speed = 0.1f;
     ui_state_.playing = false;
@@ -168,19 +169,29 @@ void Application::updateVisualization() {
     std::vector<glm::vec3> points_3d;
     projector_->projectPoints(points_4d, points_3d);
 
-    // Upload to renderer
+    // Subsample for rendering (further reduces particle count)
+    int subsample = ui_state_.render_subsample;
+    int n_render = (points_3d.size() + subsample - 1) / subsample;
+
     Renderer::ParticleData particle_data;
-    particle_data.positions = points_3d;
-    particle_data.colors = snapshot.phase;
-    particle_data.brightness = snapshot.density;
+    particle_data.positions.reserve(n_render);
+    particle_data.colors.reserve(n_render);
+    particle_data.brightness.reserve(n_render);
+
+    for (size_t i = 0; i < points_3d.size(); i += subsample) {
+        particle_data.positions.push_back(points_3d[i]);
+        particle_data.colors.push_back(snapshot.phase[i]);
+        particle_data.brightness.push_back(snapshot.density[i]);
+    }
 
     renderer_->uploadParticles(particle_data);
 
-    ui_state_.particles_rendered = static_cast<int>(points_3d.size());
+    ui_state_.particles_rendered = static_cast<int>(particle_data.positions.size());
 
     static int frame_count = 0;
     if (frame_count++ % 60 == 0) {
-        std::cout << "Rendered " << points_3d.size() << " particles" << std::endl;
+        std::cout << "Rendered " << particle_data.positions.size() << " particles "
+                  << "(snapshot=" << points_3d.size() << ", subsample=1/" << subsample << ")" << std::endl;
     }
 }
 

@@ -20,6 +20,7 @@ struct SimulationParams {
     int N = 128;                    // Grid points per dimension
     float dt = 0.001f;              // Time step
     int n_neighbors = 6;            // Number of neighbors for gradient calculation
+    int snapshot_subsample = 10;    // Save 1 in N particles to snapshots (reduces memory/IO)
 
     // Rotation plane (4D has 6 possible planes, using w-x plane)
     std::tuple<int, int> rotation_plane = {0, 1};  // (w, x) indices

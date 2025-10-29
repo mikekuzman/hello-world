@@ -68,6 +68,7 @@ private:
         bool show_poles;
         bool show_axes;
         bool show_vortices;
+        int render_subsample;  // Render 1 in N particles (further reduces already-subsampled snapshots)
 
         // Animation
         bool auto_rotate_4d;

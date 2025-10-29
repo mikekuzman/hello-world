@@ -203,14 +203,28 @@ void HypersphereBEC::run(int n_steps, int save_every) {
             auto density = getDensity();
             auto phase = getPhase();
 
-            // Compute statistics
+            // Compute statistics (on full data)
             auto stats = math::computeStats(density);
+
+            // Subsample for snapshot storage
+            int subsample = params_.snapshot_subsample;
+            int n_sampled = (n_active_ + subsample - 1) / subsample;
 
             Snapshot snapshot;
             snapshot.step = step;
-            snapshot.coords = coords_;
-            snapshot.density = density;
-            snapshot.phase = phase;
+            snapshot.coords.reserve(n_sampled * 4);
+            snapshot.density.reserve(n_sampled);
+            snapshot.phase.reserve(n_sampled);
+
+            for (int i = 0; i < n_active_; i += subsample) {
+                snapshot.coords.push_back(coords_[i * 4 + 0]);
+                snapshot.coords.push_back(coords_[i * 4 + 1]);
+                snapshot.coords.push_back(coords_[i * 4 + 2]);
+                snapshot.coords.push_back(coords_[i * 4 + 3]);
+                snapshot.density.push_back(density[i]);
+                snapshot.phase.push_back(phase[i]);
+            }
+
             snapshot.density_stats.min = stats.min;
             snapshot.density_stats.max = stats.max;
             snapshot.density_stats.mean = stats.mean;
