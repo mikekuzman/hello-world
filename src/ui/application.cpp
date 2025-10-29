@@ -245,7 +245,9 @@ void Application::runWithSimulation(int n_steps, int save_every) {
 
     // Initialize projector
     if (!projector_) {
-        projector_ = std::make_unique<Projector4D>(ui_state_.projection_method, ui_state_.perspective_distance);
+        projector_ = std::make_unique<Projector4D>(sim_params_.R, sim_params_.delta);
+        projector_->setProjectionMethod(ui_state_.projection_method);
+        projector_->setPerspectiveDistance(ui_state_.perspective_distance);
     }
 
     std::cout << "\n=== INITIALIZING SIMULATION ===" << std::endl;
