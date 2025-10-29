@@ -16,6 +16,7 @@ class Camera;
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 /**
  * OpenGL renderer for 4D BEC visualization
@@ -34,6 +35,7 @@ public:
     friend void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     friend void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     friend void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    friend void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
     // Window management
     bool shouldClose() const;

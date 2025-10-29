@@ -66,8 +66,8 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
         double dx = xpos - renderer->last_mouse_x_;
         double dy = ypos - renderer->last_mouse_y_;
 
-        // Rotate camera (scale by sensitivity)
-        float sensitivity = 0.005f;
+        // Rotate camera (increased sensitivity from 0.005 to 0.01)
+        float sensitivity = 0.01f;
         renderer->camera_->rotate(
             static_cast<float>(-dx * sensitivity),
             static_cast<float>(-dy * sensitivity)
@@ -80,7 +80,13 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     auto* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
-    renderer->camera_->zoom(static_cast<float>(-yoffset * 0.5f));
+    // Increased zoom sensitivity from 0.5 to 1.0
+    renderer->camera_->zoom(static_cast<float>(-yoffset * 1.0f));
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    auto* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    renderer->resize(width, height);
 }
 
 Renderer::Renderer(int width, int height)
@@ -112,11 +118,12 @@ Renderer::Renderer(int width, int height)
     camera_->setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera_->setTarget(glm::vec3(0.0f, 0.0f, 0.0f));
 
-    // Set up mouse callbacks
+    // Set up callbacks
     glfwSetWindowUserPointer(window_, this);
     glfwSetMouseButtonCallback(window_, mouse_button_callback);
     glfwSetCursorPosCallback(window_, cursor_position_callback);
     glfwSetScrollCallback(window_, scroll_callback);
+    glfwSetFramebufferSizeCallback(window_, framebuffer_size_callback);
 }
 
 Renderer::~Renderer() {
