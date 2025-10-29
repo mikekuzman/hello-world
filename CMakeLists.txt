@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Workaround for CUDA compiler detection crash in CMake 3.31+
+set(CMAKE_CUDA_ARCHITECTURES 61)
+set(CMAKE_CUDA_COMPILER "F:/Program Files/CUDA/v12.9/bin/nvcc.exe")
+
 project(BEC4D LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
