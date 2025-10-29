@@ -12,6 +12,11 @@ namespace bec4d {
 class Shader;
 class Camera;
 
+// Forward declare callbacks
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
 /**
  * OpenGL renderer for 4D BEC visualization
  * Displays superfluid particles, vortices, and 4D pole markers
@@ -24,6 +29,11 @@ public:
     // Disable copy
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
+
+    // Friend callbacks
+    friend void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    friend void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+    friend void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
     // Window management
     bool shouldClose() const;

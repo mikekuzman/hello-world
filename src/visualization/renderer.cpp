@@ -42,11 +42,46 @@ vec3 hsv2rgb(vec3 c) {
 }
 
 void main() {
-    // Phase angle to hue (color cycles through rainbow)
-    vec3 color_rgb = hsv2rgb(vec3(v_color / 6.28318, 1.0, v_brightness));
+    // Phase angle [-π, π] to hue [0, 1] (add π and divide by 2π)
+    float hue = (v_color + 3.14159) / 6.28318;
+    vec3 color_rgb = hsv2rgb(vec3(hue, 0.8, v_brightness));
     fragColor = vec4(color_rgb, 0.8);
 }
 )";
+
+// GLFW callbacks (declared as friends in renderer.h)
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    auto* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        renderer->mouse_pressed_ = (action == GLFW_PRESS);
+        if (action == GLFW_PRESS) {
+            glfwGetCursorPos(window, &renderer->last_mouse_x_, &renderer->last_mouse_y_);
+        }
+    }
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    auto* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    if (renderer->mouse_pressed_) {
+        double dx = xpos - renderer->last_mouse_x_;
+        double dy = ypos - renderer->last_mouse_y_;
+
+        // Rotate camera (scale by sensitivity)
+        float sensitivity = 0.005f;
+        renderer->camera_->rotate(
+            static_cast<float>(-dx * sensitivity),
+            static_cast<float>(-dy * sensitivity)
+        );
+
+        renderer->last_mouse_x_ = xpos;
+        renderer->last_mouse_y_ = ypos;
+    }
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    auto* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    renderer->camera_->zoom(static_cast<float>(-yoffset * 0.5f));
+}
 
 Renderer::Renderer(int width, int height)
     : window_(nullptr)
@@ -76,6 +111,12 @@ Renderer::Renderer(int width, int height)
     camera_ = std::make_unique<Camera>(45.0f, static_cast<float>(width) / height, 0.1f, 1000.0f);
     camera_->setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera_->setTarget(glm::vec3(0.0f, 0.0f, 0.0f));
+
+    // Set up mouse callbacks
+    glfwSetWindowUserPointer(window_, this);
+    glfwSetMouseButtonCallback(window_, mouse_button_callback);
+    glfwSetCursorPosCallback(window_, cursor_position_callback);
+    glfwSetScrollCallback(window_, scroll_callback);
 }
 
 Renderer::~Renderer() {
@@ -263,7 +304,8 @@ void Renderer::renderAxes() {
 }
 
 void Renderer::updateCameraFromInput(float dt) {
-    // TODO: Handle keyboard/mouse input for camera control
+    // Mouse input is handled via GLFW callbacks (see mouse_button_callback, cursor_position_callback, scroll_callback)
+    // Keyboard input could be added here if needed
 }
 
 } // namespace bec4d
