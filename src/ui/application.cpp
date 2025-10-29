@@ -115,13 +115,30 @@ void Application::processInput(float dt) {
 }
 
 void Application::updateVisualization() {
-    if (!simulation_ || simulation_->getSnapshots().empty()) {
-        std::cout << "No simulation data to visualize yet" << std::endl;
+    static bool first_call = true;
+
+    if (!simulation_) {
+        if (first_call) {
+            std::cout << "ERROR: No simulation object!" << std::endl;
+            first_call = false;
+        }
         return;
     }
 
-    std::cout << "Updating visualization for snapshot " << current_snapshot_
-              << " of " << simulation_->getSnapshots().size() << std::endl;
+    if (simulation_->getSnapshots().empty()) {
+        if (first_call) {
+            std::cout << "ERROR: No snapshots in simulation!" << std::endl;
+            first_call = false;
+        }
+        return;
+    }
+
+    if (first_call) {
+        std::cout << "\n=== VISUALIZATION STARTING ===" << std::endl;
+        std::cout << "Total snapshots: " << simulation_->getSnapshots().size() << std::endl;
+        std::cout << "Current snapshot: " << current_snapshot_ << std::endl;
+        first_call = false;
+    }
 
     const auto& snapshot = simulation_->getSnapshots()[current_snapshot_];
 
@@ -160,12 +177,23 @@ void Application::updateVisualization() {
     renderer_->uploadParticles(particle_data);
 
     ui_state_.particles_rendered = static_cast<int>(points_3d.size());
+
+    static int frame_count = 0;
+    if (frame_count++ % 60 == 0) {
+        std::cout << "Rendered " << points_3d.size() << " particles" << std::endl;
+    }
 }
 
 void Application::render() {
     renderer_->beginFrame();
 
     // Render particles
+    static bool first_render = true;
+    if (first_render) {
+        std::cout << "First render call - point size: " << ui_state_.point_size << std::endl;
+        first_render = false;
+    }
+
     renderer_->renderParticles(ui_state_.point_size);
 
     // Render vortices
