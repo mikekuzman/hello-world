@@ -90,11 +90,21 @@ void HypersphereBEC::findShellPoints() {
     std::vector<std::vector<float>> temp_coords;
     const int chunk_size = 8;
 
+    std::cout << "  Scanning grid: [" << std::flush;
+    int last_pct = -1;
+
     for (int iw = 0; iw < N; iw += chunk_size) {
         const int iw_end = std::min(iw + chunk_size, N);
 
         for (int wi = iw; wi < iw_end; ++wi) {
             const float w = grid[wi];
+
+            // Progress indicator
+            int pct = (wi * 100) / N;
+            if (pct != last_pct && pct % 10 == 0) {
+                std::cout << "#" << std::flush;
+                last_pct = pct;
+            }
 
             for (int xi = 0; xi < N; ++xi) {
                 const float x = grid[xi];
@@ -115,6 +125,7 @@ void HypersphereBEC::findShellPoints() {
             }
         }
     }
+    std::cout << "] Done" << std::endl;
 
     // Flatten to single array
     n_active_ = static_cast<int>(temp_coords.size());
@@ -129,12 +140,16 @@ void HypersphereBEC::findShellPoints() {
 }
 
 void HypersphereBEC::buildNeighborTree() {
+    std::cout << "  Building KD-tree: " << std::flush;
     neighbor_tree_ = std::make_unique<NeighborTree>(coords_, n_active_);
+    std::cout << "Done" << std::endl;
 
+    std::cout << "  Finding neighbors: " << std::flush;
     neighbor_indices_.resize(n_active_ * params_.n_neighbors);
     neighbor_distances_.resize(n_active_ * params_.n_neighbors);
 
     neighbor_tree_->queryKNN(params_.n_neighbors, neighbor_indices_, neighbor_distances_);
+    std::cout << "Done (" << params_.n_neighbors << "-NN)" << std::endl;
 
     // Compute average neighbor distance
     double avg_dist = 0.0;
