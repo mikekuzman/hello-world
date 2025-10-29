@@ -10,9 +10,6 @@
 
 namespace bec4d {
 
-// Define GPUData as an alias to the shared struct
-using HypersphereBEC::GPUData = GPUData;
-
 HypersphereBEC::HypersphereBEC(const SimulationParams& params)
     : params_(params)
     , n_active_(0)
