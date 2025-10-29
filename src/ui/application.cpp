@@ -57,6 +57,9 @@ void Application::run() {
     initUI();
 
     std::cout << "\nApplication ready. Starting main loop..." << std::endl;
+    std::cout << "Press ESC or close window to exit" << std::endl;
+
+    last_frame_time_ = glfwGetTime();
 
     // Main loop
     while (!renderer_->shouldClose()) {
@@ -113,8 +116,12 @@ void Application::processInput(float dt) {
 
 void Application::updateVisualization() {
     if (!simulation_ || simulation_->getSnapshots().empty()) {
+        std::cout << "No simulation data to visualize yet" << std::endl;
         return;
     }
+
+    std::cout << "Updating visualization for snapshot " << current_snapshot_
+              << " of " << simulation_->getSnapshots().size() << std::endl;
 
     const auto& snapshot = simulation_->getSnapshots()[current_snapshot_];
 
