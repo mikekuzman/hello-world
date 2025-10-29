@@ -33,6 +33,10 @@ int main(int argc, char** argv) {
         app.setSimulationParams(params);
         app.setWindowSize(1920, 1080);
 
+        // Run simulation BEFORE opening window
+        std::cout << "\nRunning simulation (100 steps)..." << std::endl;
+        app.startSimulation(100, 20);  // 100 steps, save every 20
+
         // Run application (will start simulation and visualization)
         std::cout << "\nStarting application..." << std::endl;
         std::cout << "Controls:" << std::endl;
