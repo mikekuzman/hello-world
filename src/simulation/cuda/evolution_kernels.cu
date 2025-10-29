@@ -1,4 +1,5 @@
 #include "hypersphere_bec.h"
+#include "../gpu_data.h"
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cstdio>

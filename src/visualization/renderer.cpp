@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "shader.h"
 #include "camera.h"
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 
@@ -104,8 +105,12 @@ void Renderer::initGL() {
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1);  // VSync
 
-    // Initialize GLAD (or use system OpenGL)
-    // TODO: Add glad initialization if using glad
+    // Initialize GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        glfwDestroyWindow(window_);
+        glfwTerminate();
+        throw std::runtime_error("Failed to initialize GLAD");
+    }
 
     // Enable features
     glEnable(GL_DEPTH_TEST);

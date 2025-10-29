@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <memory>
 
 namespace bec4d {
 
