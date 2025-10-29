@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <functional>
 
 namespace bec4d {
 
@@ -21,7 +22,10 @@ struct GPUData;  // Forward declare at namespace level
  */
 class HypersphereBEC {
 public:
-    explicit HypersphereBEC(const SimulationParams& params);
+    // Progress callback: (phase_name, progress_0_to_1)
+    using ProgressCallback = std::function<void(const char*, float)>;
+
+    explicit HypersphereBEC(const SimulationParams& params, ProgressCallback progress_cb = nullptr);
     ~HypersphereBEC();
 
     // Disable copy, allow move
@@ -103,6 +107,9 @@ private:
     // Performance tracking
     PerformanceMetrics metrics_;
     double start_time_;
+
+    // Progress callback
+    ProgressCallback progress_callback_;
 };
 
 } // namespace bec4d

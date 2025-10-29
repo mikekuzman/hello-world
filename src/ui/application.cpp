@@ -251,20 +251,29 @@ void Application::runWithSimulation(int n_steps, int save_every) {
     std::cout << "\n=== INITIALIZING SIMULATION ===" << std::endl;
     std::cout << "Watch the window for visual progress..." << std::endl;
 
-    // Show "Initializing..." progress
-    for (int i = 0; i < 10; ++i) {
+    // Create progress callback that renders to window
+    auto progress_callback = [this](const char* phase, float progress) {
         renderer_->pollEvents();
         if (renderer_->shouldClose()) return;
 
         renderer_->beginFrame();
-        renderer_->renderProgressBar(static_cast<float>(i) / 10.0f, 0.0f, glm::vec3(0.3f, 0.6f, 1.0f));
+
+        // Different colors for different phases
+        glm::vec3 color(0.3f, 0.6f, 1.0f);
+        if (strcmp(phase, "Shell Scan") == 0) color = glm::vec3(0.2f, 0.8f, 0.3f);
+        else if (strcmp(phase, "KD-Tree Build") == 0) color = glm::vec3(0.8f, 0.6f, 0.2f);
+        else if (strcmp(phase, "Simulation") == 0) color = glm::vec3(0.6f, 0.3f, 0.9f);
+
+        // Render progress bar at top of screen
+        renderer_->renderProgressBar(progress, 0.5f, color);
+
         renderer_->endFrame();
         renderer_->swapBuffers();
-    }
+    };
 
-    // Create simulation (this will take time - shell scan, tree build)
+    // Create simulation with progress callback
     std::cout << "Creating simulation (this will take a few minutes)..." << std::endl;
-    simulation_ = std::make_unique<HypersphereBEC>(sim_params_);
+    simulation_ = std::make_unique<HypersphereBEC>(sim_params_, progress_callback);
 
     // Run simulation with progress updates
     std::cout << "Running " << n_steps << " simulation steps..." << std::endl;

@@ -10,11 +10,12 @@
 
 namespace bec4d {
 
-HypersphereBEC::HypersphereBEC(const SimulationParams& params)
+HypersphereBEC::HypersphereBEC(const SimulationParams& params, ProgressCallback progress_cb)
     : params_(params)
     , n_active_(0)
     , gpu_data_(std::make_unique<GPUData>())
     , metrics_{}
+    , progress_callback_(progress_cb)
 {
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -104,6 +105,9 @@ void HypersphereBEC::findShellPoints() {
             if (pct != last_pct && pct % 10 == 0) {
                 std::cout << "#" << std::flush;
                 last_pct = pct;
+                if (progress_callback_) {
+                    progress_callback_("Shell Scan", static_cast<float>(pct) / 100.0f);
+                }
             }
 
             for (int xi = 0; xi < N; ++xi) {
@@ -141,7 +145,11 @@ void HypersphereBEC::findShellPoints() {
 
 void HypersphereBEC::buildNeighborTree() {
     std::cout << "  Building KD-tree: " << std::flush;
+    if (progress_callback_) progress_callback_("KD-Tree Build", 0.0f);
+
     neighbor_tree_ = std::make_unique<NeighborTree>(coords_, n_active_);
+
+    if (progress_callback_) progress_callback_("KD-Tree Build", 1.0f);
     std::cout << "Done" << std::endl;
 
     std::cout << "  Finding neighbors: " << std::flush;
@@ -263,6 +271,12 @@ void HypersphereBEC::run(int n_steps, int save_every) {
                       << ", ETA: " << (eta_seconds / 60.0) << " min"
                       << " (snapshot: " << std::setprecision(2) << snapshot_time << "s)"
                       << std::endl;
+
+            // Report progress
+            if (progress_callback_) {
+                float progress = static_cast<float>(step + 1) / static_cast<float>(n_steps);
+                progress_callback_("Simulation", progress);
+            }
 
             // Check stability
             if (std::isnan(stats.mean) || stats.max > 1e6f) {
