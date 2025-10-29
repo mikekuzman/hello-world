@@ -269,9 +269,10 @@ void Application::runWithSimulation(int n_steps, int save_every) {
 
         // Different colors for different phases
         glm::vec3 color(0.3f, 0.6f, 1.0f);
-        if (strcmp(phase, "Shell Scan") == 0) color = glm::vec3(0.2f, 0.8f, 0.3f);
-        else if (strcmp(phase, "KD-Tree Build") == 0) color = glm::vec3(0.8f, 0.6f, 0.2f);
-        else if (strcmp(phase, "Simulation") == 0) color = glm::vec3(0.6f, 0.3f, 0.9f);
+        if (strcmp(phase, "Shell Scan") == 0) color = glm::vec3(0.2f, 0.8f, 0.3f);       // Green
+        else if (strcmp(phase, "KD-Tree Build") == 0) color = glm::vec3(0.8f, 0.6f, 0.2f);  // Orange
+        else if (strcmp(phase, "Neighbor Search") == 0) color = glm::vec3(0.9f, 0.9f, 0.2f); // Yellow
+        else if (strcmp(phase, "Simulation") == 0) color = glm::vec3(0.6f, 0.3f, 0.9f);  // Purple
 
         // Render phase text above progress bar
         renderer_->renderText(phase, 0.0f, 0.65f);
