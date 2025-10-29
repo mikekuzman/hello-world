@@ -258,6 +258,13 @@ void Application::runWithSimulation(int n_steps, int save_every) {
         renderer_->pollEvents();
         if (renderer_->shouldClose()) return;
 
+        // Update window title with current phase
+        std::string title = "4D BEC Simulator - " + std::string(phase);
+        if (progress > 0.0f && progress < 1.0f) {
+            title += " (" + std::to_string(static_cast<int>(progress * 100)) + "%)";
+        }
+        glfwSetWindowTitle(renderer_->getWindow(), title.c_str());
+
         renderer_->beginFrame();
 
         // Different colors for different phases
@@ -266,7 +273,10 @@ void Application::runWithSimulation(int n_steps, int save_every) {
         else if (strcmp(phase, "KD-Tree Build") == 0) color = glm::vec3(0.8f, 0.6f, 0.2f);
         else if (strcmp(phase, "Simulation") == 0) color = glm::vec3(0.6f, 0.3f, 0.9f);
 
-        // Render progress bar at top of screen
+        // Render phase text above progress bar
+        renderer_->renderText(phase, 0.0f, 0.65f);
+
+        // Render progress bar
         renderer_->renderProgressBar(progress, 0.5f, color);
 
         renderer_->endFrame();

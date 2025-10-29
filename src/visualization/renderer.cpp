@@ -350,8 +350,41 @@ void Renderer::renderProgressBar(float progress, float y_pos, const glm::vec3& c
 }
 
 void Renderer::renderText(const char* text, float x, float y) {
-    // TODO: Implement simple text rendering (for now, skip)
-    // Could use bitmap fonts or simple geometric text
+    // Simple text rendering using GL_LINES to draw characters
+    // Very basic - just draws the text as simple line segments
+
+    glDisable(GL_DEPTH_TEST);
+    glColor3f(1.0f, 1.0f, 1.0f);  // White text
+
+    float char_width = 0.03f;
+    float char_height = 0.05f;
+    float spacing = 0.04f;
+
+    // Center the text
+    float total_width = strlen(text) * spacing;
+    float start_x = x - total_width / 2.0f;
+
+    for (size_t i = 0; i < strlen(text); ++i) {
+        char c = text[i];
+        float cx = start_x + i * spacing;
+
+        // Draw simple character shapes (just a subset for now)
+        glBegin(GL_LINES);
+
+        // Draw a simple vertical line for most characters
+        glVertex2f(cx, y - char_height/2);
+        glVertex2f(cx, y + char_height/2);
+
+        // Add horizontal bars for some letters
+        if (c == 'E' || c == 'F' || c == 'H' || c == 'T' || c == 'A' || c == 'B') {
+            glVertex2f(cx, y);
+            glVertex2f(cx + char_width, y);
+        }
+
+        glEnd();
+    }
+
+    glEnable(GL_DEPTH_TEST);
 }
 
 } // namespace bec4d

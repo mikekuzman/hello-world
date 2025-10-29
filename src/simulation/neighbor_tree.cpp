@@ -155,10 +155,14 @@ NeighborTree::~NeighborTree() = default;
 void NeighborTree::queryKNN(
     int k,
     std::vector<int32_t>& indices_out,
-    std::vector<float>& distances_out
+    std::vector<float>& distances_out,
+    ProgressCallback progress_cb
 ) {
     indices_out.resize(impl_->n_points * k);
     distances_out.resize(impl_->n_points * k);
+
+    // Report progress every 1% of points
+    int progress_interval = std::max(1, impl_->n_points / 100);
 
     // Query each point
     for (int i = 0; i < impl_->n_points; ++i) {
@@ -176,6 +180,12 @@ void NeighborTree::queryKNN(
 
         // Reverse (heap is max-heap, we want ascending order)
         std::reverse(results.begin(), results.end());
+
+        // Report progress periodically
+        if (progress_cb && (i % progress_interval == 0 || i == impl_->n_points - 1)) {
+            float progress = static_cast<float>(i + 1) / static_cast<float>(impl_->n_points);
+            progress_cb(progress);
+        }
 
         // Fill output arrays (skip first entry if it's the point itself)
         int out_idx = 0;

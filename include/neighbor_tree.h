@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
+#include <functional>
 
 namespace bec4d {
 
@@ -12,6 +13,8 @@ namespace bec4d {
  */
 class NeighborTree {
 public:
+    using ProgressCallback = std::function<void(float)>;
+
     NeighborTree(const std::vector<float>& coords, int n_points);
     ~NeighborTree();
 
@@ -19,7 +22,8 @@ public:
     void queryKNN(
         int k,
         std::vector<int32_t>& indices_out,    // [n_points * k]
-        std::vector<float>& distances_out     // [n_points * k]
+        std::vector<float>& distances_out,    // [n_points * k]
+        ProgressCallback progress_cb = nullptr
     );
 
     // Query k nearest neighbors for a single point
