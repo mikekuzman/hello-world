@@ -10,6 +10,7 @@ namespace bec4d {
 // Forward declarations
 class NeighborTree;
 struct SnapshotData;
+struct GPUData;  // Forward declare at namespace level
 
 /**
  * 4D Hypersphere Quantum Superfluid Simulator
@@ -90,8 +91,7 @@ private:
     std::vector<int32_t> neighbor_indices_; // [n_active * n_neighbors]
     std::vector<float> neighbor_distances_; // [n_active * n_neighbors]
 
-    // Device memory (GPU) - opaque pointers
-    struct GPUData;
+    // Device memory (GPU) - opaque pointer
     std::unique_ptr<GPUData> gpu_data_;
 
     // Neighbor tree
