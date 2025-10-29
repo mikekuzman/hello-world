@@ -34,19 +34,14 @@ int main(int argc, char** argv) {
         app.setSimulationParams(params);
         app.setWindowSize(1920, 1080);
 
-        // Run simulation BEFORE opening window
-        std::cout << "\nRunning simulation (5000 steps)..." << std::endl;
-        app.startSimulation(5000, 500);  // 5000 steps, save every 500
-
-        // Run application (will start simulation and visualization)
+        // Run application - it will show progress window and run simulation with visual feedback
         std::cout << "\nStarting application..." << std::endl;
         std::cout << "Controls:" << std::endl;
         std::cout << "  Mouse: Rotate camera" << std::endl;
         std::cout << "  Scroll: Zoom" << std::endl;
-        std::cout << "  UI: Configure 4D rotation, projection, and visualization" << std::endl;
         std::cout << std::endl;
 
-        app.run();
+        app.runWithSimulation(5000, 500);  // Show window, run sim with progress, then visualize
 
         std::cout << "\nApplication closed normally." << std::endl;
         return 0;

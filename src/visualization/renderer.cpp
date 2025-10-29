@@ -315,4 +315,43 @@ void Renderer::updateCameraFromInput(float dt) {
     // Keyboard input could be added here if needed
 }
 
+void Renderer::renderProgressBar(float progress, float y_pos, const glm::vec3& color) {
+    // Render a simple progress bar in NDC coordinates
+    // Progress bar centered horizontally, width 0.6 of screen
+    float bar_width = 0.6f;
+    float bar_height = 0.05f;
+    float filled_width = bar_width * progress;
+
+    // Disable depth test for 2D rendering
+    glDisable(GL_DEPTH_TEST);
+
+    // Draw background (dark gray)
+    glBegin(GL_QUADS);
+    glColor3f(0.2f, 0.2f, 0.2f);
+    glVertex2f(-bar_width/2, y_pos - bar_height/2);
+    glVertex2f( bar_width/2, y_pos - bar_height/2);
+    glVertex2f( bar_width/2, y_pos + bar_height/2);
+    glVertex2f(-bar_width/2, y_pos + bar_height/2);
+    glEnd();
+
+    // Draw filled part
+    if (progress > 0.0f) {
+        glBegin(GL_QUADS);
+        glColor3f(color.r, color.g, color.b);
+        glVertex2f(-bar_width/2, y_pos - bar_height/2);
+        glVertex2f(-bar_width/2 + filled_width, y_pos - bar_height/2);
+        glVertex2f(-bar_width/2 + filled_width, y_pos + bar_height/2);
+        glVertex2f(-bar_width/2, y_pos + bar_height/2);
+        glEnd();
+    }
+
+    // Re-enable depth test
+    glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::renderText(const char* text, float x, float y) {
+    // TODO: Implement simple text rendering (for now, skip)
+    // Could use bitmap fonts or simple geometric text
+}
+
 } // namespace bec4d

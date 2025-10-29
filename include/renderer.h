@@ -64,6 +64,10 @@ public:
     void renderPoles();
     void renderAxes();  // 3D coordinate axes for reference
 
+    // Progress rendering (for simulation init/running)
+    void renderProgressBar(float progress, float y_pos, const glm::vec3& color);
+    void renderText(const char* text, float x, float y);  // Simple text (stub for now)
+
     // Camera control
     Camera& getCamera() { return *camera_; }
     void updateCameraFromInput(float dt);

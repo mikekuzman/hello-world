@@ -20,6 +20,7 @@ public:
 
     // Main loop
     void run();
+    void runWithSimulation(int n_steps, int save_every = 100);  // Run with visual progress
 
     // Configuration
     void setSimulationParams(const SimulationParams& params);

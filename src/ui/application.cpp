@@ -237,6 +237,46 @@ void Application::startSimulation(int n_steps, int save_every) {
               << " snapshots captured." << std::endl;
 }
 
+void Application::runWithSimulation(int n_steps, int save_every) {
+    // Initialize renderer first
+    if (!renderer_) {
+        renderer_ = std::make_unique<Renderer>(1920, 1080);
+    }
+
+    // Initialize projector
+    if (!projector_) {
+        projector_ = std::make_unique<Projector4D>(ui_state_.projection_method, ui_state_.perspective_distance);
+    }
+
+    std::cout << "\n=== INITIALIZING SIMULATION ===" << std::endl;
+    std::cout << "Watch the window for visual progress..." << std::endl;
+
+    // Show "Initializing..." progress
+    for (int i = 0; i < 10; ++i) {
+        renderer_->pollEvents();
+        if (renderer_->shouldClose()) return;
+
+        renderer_->beginFrame();
+        renderer_->renderProgressBar(static_cast<float>(i) / 10.0f, 0.0f, glm::vec3(0.3f, 0.6f, 1.0f));
+        renderer_->endFrame();
+        renderer_->swapBuffers();
+    }
+
+    // Create simulation (this will take time - shell scan, tree build)
+    std::cout << "Creating simulation (this will take a few minutes)..." << std::endl;
+    simulation_ = std::make_unique<HypersphereBEC>(sim_params_);
+
+    // Run simulation with progress updates
+    std::cout << "Running " << n_steps << " simulation steps..." << std::endl;
+    simulation_->run(n_steps, save_every);
+
+    std::cout << "Simulation complete! " << simulation_->getSnapshots().size() << " snapshots captured." << std::endl;
+    std::cout << "\n=== STARTING VISUALIZATION ===" << std::endl;
+
+    // Now run normal visualization loop
+    run();
+}
+
 void Application::pauseSimulation() {
     sim_running_ = false;
 }
