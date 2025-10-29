@@ -156,7 +156,14 @@ void HypersphereBEC::buildNeighborTree() {
     neighbor_indices_.resize(n_active_ * params_.n_neighbors);
     neighbor_distances_.resize(n_active_ * params_.n_neighbors);
 
-    neighbor_tree_->queryKNN(params_.n_neighbors, neighbor_indices_, neighbor_distances_);
+    // Query with progress callback
+    auto neighbor_progress = [this](float progress) {
+        if (progress_callback_) {
+            progress_callback_("Neighbor Search", progress);
+        }
+    };
+
+    neighbor_tree_->queryKNN(params_.n_neighbors, neighbor_indices_, neighbor_distances_, neighbor_progress);
     std::cout << "Done (" << params_.n_neighbors << "-NN)" << std::endl;
 
     // Compute average neighbor distance
