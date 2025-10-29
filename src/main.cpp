@@ -16,14 +16,14 @@ int main(int argc, char** argv) {
         // Configure simulation parameters
         bec4d::SimulationParams params;
 
-        // Small test for quick validation
-        params.R = 200.0f;
-        params.delta = 10.0f;
-        params.g = 0.05f;
-        params.omega = 0.03f;
-        params.N = 32;
-        params.dt = 0.001f;
-        params.n_neighbors = 6;
+        // Full scale parameters (dimensionless units: hbar=m=xi=1)
+        params.R = 1000.0f;          // Hypersphere radius in healing lengths
+        params.delta = 25.0f;        // Shell thickness in healing lengths
+        params.g = 0.05f;            // Interaction strength (weak)
+        params.omega = 0.03f;        // Rotation rate (moderate)
+        params.N = 128;              // Grid points per dimension
+        params.dt = 0.001f;          // Time step
+        params.n_neighbors = 6;      // Number of neighbors for gradient calculation
         params.random_seed = 42;
         params.initial_condition_type = bec4d::SimulationParams::InitialConditionType::UniformNoise;
 
