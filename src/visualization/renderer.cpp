@@ -125,9 +125,34 @@ void Renderer::initGL() {
 }
 
 void Renderer::createParticleBuffers() {
-    // TODO: Implement OpenGL buffer creation
-    particle_buffers_.vao = 0;
+    glGenVertexArrays(1, &particle_buffers_.vao);
+    glGenBuffers(1, &particle_buffers_.vbo_positions);
+    glGenBuffers(1, &particle_buffers_.vbo_colors);
+    glGenBuffers(1, &particle_buffers_.vbo_brightness);
+
     particle_buffers_.count = 0;
+
+    // Setup VAO layout
+    glBindVertexArray(particle_buffers_.vao);
+
+    // Position (vec3)
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_positions);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    // Color (float - phase angle)
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_colors);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    // Brightness (float - density)
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_brightness);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glBindVertexArray(0);
+
+    std::cout << "Created particle VAO: " << particle_buffers_.vao << std::endl;
 }
 
 void Renderer::createVortexBuffers() {
@@ -164,8 +189,32 @@ void Renderer::endFrame() {
 }
 
 void Renderer::uploadParticles(const ParticleData& data) {
-    // TODO: Upload particle data to GPU buffers
     particle_buffers_.count = data.positions.size();
+
+    if (particle_buffers_.count == 0) return;
+
+    // Upload positions
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_positions);
+    glBufferData(GL_ARRAY_BUFFER,
+                 data.positions.size() * sizeof(glm::vec3),
+                 data.positions.data(),
+                 GL_DYNAMIC_DRAW);
+
+    // Upload colors
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_colors);
+    glBufferData(GL_ARRAY_BUFFER,
+                 data.colors.size() * sizeof(float),
+                 data.colors.data(),
+                 GL_DYNAMIC_DRAW);
+
+    // Upload brightness
+    glBindBuffer(GL_ARRAY_BUFFER, particle_buffers_.vbo_brightness);
+    glBufferData(GL_ARRAY_BUFFER,
+                 data.brightness.size() * sizeof(float),
+                 data.brightness.data(),
+                 GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Renderer::renderParticles(float point_size) {
@@ -175,7 +224,9 @@ void Renderer::renderParticles(float point_size) {
     particle_shader_->setMat4("viewProjection", camera_->getViewProjectionMatrix());
     particle_shader_->setFloat("pointSize", point_size);
 
-    // TODO: Bind VAO and draw
+    glBindVertexArray(particle_buffers_.vao);
+    glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(particle_buffers_.count));
+    glBindVertexArray(0);
 }
 
 void Renderer::resize(int width, int height) {
