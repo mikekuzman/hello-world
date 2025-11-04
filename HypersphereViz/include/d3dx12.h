@@ -29,13 +29,13 @@ struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
         D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE)
     {
         CD3DX12_RESOURCE_BARRIER result;
-        ZeroMemory(&result, sizeof(result));
         result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         result.Flags = flags;
-        result.Transition.pResource = pResource;
-        result.Transition.StateBefore = stateBefore;
-        result.Transition.StateAfter = stateAfter;
-        result.Transition.Subresource = subresource;
+        D3D12_RESOURCE_TRANSITION_BARRIER& transition = result.Transition;
+        transition.pResource = pResource;
+        transition.StateBefore = stateBefore;
+        transition.StateAfter = stateAfter;
+        transition.Subresource = subresource;
         return result;
     }
 };
