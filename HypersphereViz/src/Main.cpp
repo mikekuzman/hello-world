@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <windowsx.h>  // For GET_X_LPARAM, GET_Y_LPARAM
 #include <iostream>
 #include "../include/D3D12Renderer.h"
 #include <chrono>
@@ -16,6 +17,26 @@ float g_speedWZ = 0.7f;
 // Current projection type
 const char* g_projectionNames[] = { "Perspective", "Stereographic", "Orthographic" };
 int g_currentProjection = 0;  // 0 = Perspective
+
+// Mouse state for camera control
+bool g_mouseLeftDown = false;
+bool g_mouseRightDown = false;
+int g_lastMouseX = 0;
+int g_lastMouseY = 0;
+
+// Function to update window title with current state
+void UpdateWindowTitle()
+{
+    if (!g_renderer) return;
+
+    wchar_t title[256];
+    swprintf_s(title, L"4D Hypersphere Viz | %S | WX:%.1f WY:%.1f WZ:%.1f | Dist:%.1f",
+        g_projectionNames[g_currentProjection],
+        g_speedWX, g_speedWY, g_speedWZ,
+        g_renderer->GetCameraDistance());
+
+    SetWindowText(g_hwnd, title);
+}
 
 // Window procedure
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -36,6 +57,59 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         return 0;
 
+    case WM_LBUTTONDOWN:
+        g_mouseLeftDown = true;
+        g_lastMouseX = GET_X_LPARAM(lParam);
+        g_lastMouseY = GET_Y_LPARAM(lParam);
+        SetCapture(hwnd);
+        return 0;
+
+    case WM_LBUTTONUP:
+        g_mouseLeftDown = false;
+        ReleaseCapture();
+        return 0;
+
+    case WM_RBUTTONDOWN:
+        g_mouseRightDown = true;
+        g_lastMouseX = GET_X_LPARAM(lParam);
+        g_lastMouseY = GET_Y_LPARAM(lParam);
+        SetCapture(hwnd);
+        return 0;
+
+    case WM_RBUTTONUP:
+        g_mouseRightDown = false;
+        ReleaseCapture();
+        return 0;
+
+    case WM_MOUSEMOVE:
+        if (g_renderer && (g_mouseLeftDown || g_mouseRightDown))
+        {
+            int mouseX = GET_X_LPARAM(lParam);
+            int mouseY = GET_Y_LPARAM(lParam);
+            int deltaX = mouseX - g_lastMouseX;
+            int deltaY = mouseY - g_lastMouseY;
+
+            if (g_mouseLeftDown)
+            {
+                // Left mouse: orbit camera
+                g_renderer->RotateCamera((float)deltaX, (float)deltaY);
+                UpdateWindowTitle();
+            }
+
+            g_lastMouseX = mouseX;
+            g_lastMouseY = mouseY;
+        }
+        return 0;
+
+    case WM_MOUSEWHEEL:
+        if (g_renderer)
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            g_renderer->ZoomCamera((float)delta / 120.0f);
+            UpdateWindowTitle();
+        }
+        return 0;
+
     case WM_KEYDOWN:
         switch (wParam)
         {
@@ -49,6 +123,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_currentProjection = 0;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Perspective);
                 std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case '2':  // Stereographic projection
@@ -57,6 +132,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_currentProjection = 1;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Stereographic);
                 std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case '3':  // Orthographic projection
@@ -65,6 +141,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_currentProjection = 2;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Orthographic);
                 std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'Q':  // Increase WX rotation
@@ -73,6 +150,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWX += 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'A':  // Decrease WX rotation
@@ -81,6 +159,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWX -= 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'W':  // Increase WY rotation
@@ -89,6 +168,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWY += 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'S':  // Decrease WY rotation
@@ -97,6 +177,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWY -= 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'E':  // Increase WZ rotation
@@ -105,6 +186,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWZ += 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         case 'D':  // Decrease WZ rotation
@@ -113,6 +195,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_speedWZ -= 0.1f;
                 g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
                 std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+                UpdateWindowTitle();
             }
             return 0;
         }
@@ -177,13 +260,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     std::cout << "4D Hypersphere Visualizer - DirectX 12\n";
     std::cout << "======================================\n\n";
     std::cout << "Controls:\n";
-    std::cout << "  1 - Perspective Projection\n";
-    std::cout << "  2 - Stereographic Projection\n";
-    std::cout << "  3 - Orthographic Projection\n";
-    std::cout << "  Q/A - Increase/Decrease WX rotation speed\n";
-    std::cout << "  W/S - Increase/Decrease WY rotation speed\n";
-    std::cout << "  E/D - Increase/Decrease WZ rotation speed\n";
-    std::cout << "  ESC - Exit\n\n";
+    std::cout << "  1/2/3       - Perspective/Stereographic/Orthographic Projection\n";
+    std::cout << "  Q/A         - Increase/Decrease WX rotation speed\n";
+    std::cout << "  W/S         - Increase/Decrease WY rotation speed\n";
+    std::cout << "  E/D         - Increase/Decrease WZ rotation speed\n";
+    std::cout << "  LEFT MOUSE  - Drag to orbit camera\n";
+    std::cout << "  MOUSE WHEEL - Zoom in/out\n";
+    std::cout << "  ESC         - Exit\n\n";
+    std::cout << "State displayed in window title bar\n\n";
 #endif
 
     // Create window
@@ -212,6 +296,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     std::cout << "[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
     std::cout << "[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
     std::cout << "=====================\n\n";
+
+    // Set initial window title
+    UpdateWindowTitle();
 
     // Main loop
     auto lastTime = std::chrono::high_resolution_clock::now();

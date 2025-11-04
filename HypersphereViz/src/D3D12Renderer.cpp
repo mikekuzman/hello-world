@@ -38,8 +38,8 @@ D3D12Renderer::D3D12Renderer()
     , m_rotationSpeedWY(0.3f)
     , m_rotationSpeedWZ(0.7f)
     , m_cameraDistance(5.0f)
-    , m_cameraAngleX(0.3f)
-    , m_cameraAngleY(0.0f)
+    , m_cameraAngleX(0.5f)  // ~30 degrees azimuth
+    , m_cameraAngleY(1.0f)  // ~60 degrees elevation (PI/3)
     , m_time(0.0f)
 {
     for (UINT i = 0; i < FRAME_COUNT; i++)
@@ -500,8 +500,13 @@ void D3D12Renderer::Update(float deltaTime)
 
 void D3D12Renderer::UpdateConstantBuffer()
 {
-    // Create view-projection matrix
-    XMVECTOR eye = XMVectorSet(0.0f, 0.0f, -m_cameraDistance, 0.0f);
+    // Create view-projection matrix with orbit camera
+    // Convert spherical coordinates to Cartesian
+    float camX = m_cameraDistance * sinf(m_cameraAngleY) * cosf(m_cameraAngleX);
+    float camY = m_cameraDistance * cosf(m_cameraAngleY);
+    float camZ = m_cameraDistance * sinf(m_cameraAngleY) * sinf(m_cameraAngleX);
+
+    XMVECTOR eye = XMVectorSet(camX, camY, camZ, 0.0f);
     XMVECTOR at = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -641,4 +646,21 @@ void D3D12Renderer::SetRotationSpeeds(float speedWX, float speedWY, float speedW
 void D3D12Renderer::SetProjectionDistance(float distance)
 {
     m_projectionDistance = distance;
+}
+
+void D3D12Renderer::RotateCamera(float deltaX, float deltaY)
+{
+    // Update camera angles based on mouse movement
+    m_cameraAngleX += deltaX * 0.005f;  // Horizontal rotation (yaw)
+    m_cameraAngleY += deltaY * 0.005f;  // Vertical rotation (pitch)
+
+    // Clamp vertical angle to prevent flipping
+    const float PI = 3.14159265359f;
+    m_cameraAngleY = std::max(0.1f, std::min(PI - 0.1f, m_cameraAngleY));
+}
+
+void D3D12Renderer::ZoomCamera(float delta)
+{
+    m_cameraDistance -= delta * 0.1f;
+    m_cameraDistance = std::max(1.0f, std::min(50.0f, m_cameraDistance));
 }

@@ -46,11 +46,21 @@ public:
     void SetRotationSpeeds(float speedWX, float speedWY, float speedWZ);
     void SetProjectionDistance(float distance);
 
+    // Camera controls
+    void RotateCamera(float deltaX, float deltaY);
+    void ZoomCamera(float delta);
+
     // Getters
     uint32_t GetWidth() const { return m_width; }
     uint32_t GetHeight() const { return m_height; }
     ID3D12Device* GetDevice() const { return m_device.Get(); }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
+
+    Math4D::ProjectionType GetProjectionType() const { return m_projectionType; }
+    float GetRotationSpeedWX() const { return m_rotationSpeedWX; }
+    float GetRotationSpeedWY() const { return m_rotationSpeedWY; }
+    float GetRotationSpeedWZ() const { return m_rotationSpeedWZ; }
+    float GetCameraDistance() const { return m_cameraDistance; }
 
 private:
     // Initialization helpers
