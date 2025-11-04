@@ -16,14 +16,14 @@ struct VSOutput
 
 cbuffer SceneConstants : register(b0)
 {
-    float4x4 viewProj;
-    float4x4 rotation4D;
-    float projectionDistance;
-    float sphereRadius;
-    int projectionType;  // 0=perspective, 1=stereographic, 2=orthographic
-    int pointCount;
-    float time;
-    float3 padding;
+    float4x4 viewProj;           // 64 bytes
+    float4x4 rotation4D;         // 64 bytes
+    float projectionDistance;    // 4 bytes
+    float sphereRadius;          // 4 bytes
+    int projectionType;          // 4 bytes (0=perspective, 1=stereographic, 2=orthographic)
+    int pointCount;              // 4 bytes
+    float time;                  // 4 bytes
+    float padding[27];           // 108 bytes padding (256 bytes total)
 };
 
 // Project 4D point to 3D space

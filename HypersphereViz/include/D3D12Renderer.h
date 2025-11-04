@@ -12,18 +12,19 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Constant buffer structure
+// Constant buffer structure (must be 256-byte aligned for DirectX 12)
 struct SceneConstants
 {
-    DirectX::XMFLOAT4X4 viewProj;
-    float rotation4D[16];  // 4x4 rotation matrix for 4D space
-    float projectionDistance;
-    float sphereRadius;
-    int projectionType;  // 0=perspective, 1=stereographic, 2=orthographic
-    int pointCount;
-    float time;
-    float padding[3];
+    DirectX::XMFLOAT4X4 viewProj;           // 64 bytes
+    float rotation4D[16];                    // 64 bytes (4x4 matrix)
+    float projectionDistance;                // 4 bytes
+    float sphereRadius;                      // 4 bytes
+    int projectionType;                      // 4 bytes (0=perspective, 1=stereographic, 2=orthographic)
+    int pointCount;                          // 4 bytes
+    float time;                              // 4 bytes
+    float padding[27];                       // 108 bytes padding to reach 256 bytes total
 };
+static_assert(sizeof(SceneConstants) == 256, "SceneConstants must be 256 bytes for D3D12 alignment");
 
 class D3D12Renderer
 {
