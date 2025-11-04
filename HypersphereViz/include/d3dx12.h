@@ -28,14 +28,15 @@ struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
         UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
         D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE)
     {
-        CD3DX12_RESOURCE_BARRIER result;
-        result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        result.Flags = flags;
-        D3D12_RESOURCE_TRANSITION_BARRIER& transition = result.Transition;
-        transition.pResource = pResource;
-        transition.StateBefore = stateBefore;
-        transition.StateAfter = stateAfter;
-        transition.Subresource = subresource;
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = flags;
+        barrier.Transition.pResource = pResource;
+        barrier.Transition.StateBefore = stateBefore;
+        barrier.Transition.StateAfter = stateAfter;
+        barrier.Transition.Subresource = subresource;
+
+        CD3DX12_RESOURCE_BARRIER result(barrier);
         return result;
     }
 };
