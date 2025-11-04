@@ -28,7 +28,8 @@ struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
         UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
         D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE)
     {
-        CD3DX12_RESOURCE_BARRIER result = {};
+        CD3DX12_RESOURCE_BARRIER result;
+        ZeroMemory(&result, sizeof(result));
         result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         result.Flags = flags;
         result.Transition.pResource = pResource;

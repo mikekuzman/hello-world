@@ -64,7 +64,7 @@ float4 GetPointColor(float w, uint flags)
     t = saturate(t);
 
     // Create a nice color gradient: blue -> cyan -> green -> yellow -> red
-    float4 color;
+    float4 color = float4(1.0, 0.0, 0.0, 1.0);  // Default to red (fallback)
     if (t < 0.25)
     {
         float local_t = t / 0.25;
