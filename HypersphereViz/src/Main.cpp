@@ -205,7 +205,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     std::cout << "Renderer initialized successfully!\n";
-    std::cout << "Rendering 100,000 points on 4D hypersphere...\n";
+    std::cout << "Rendering 100,000 points on 4D hypersphere SHELL...\n";
+    std::cout << "  Shell radius: 1.0\n";
+    std::cout << "  Shell thickness: 0.02 (2% of radius)\n";
     std::cout << "\n=== INITIAL STATE ===\n";
     std::cout << "[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
     std::cout << "[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";

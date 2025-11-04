@@ -76,7 +76,9 @@ bool D3D12Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height)
 
         // Initialize hypersphere generator
         std::vector<Point4D> points;
-        m_hypersphereGen.GeneratePointsCPU(points, m_pointCount, 1.0f);
+        const float shellRadius = 1.0f;
+        const float shellThickness = 0.02f;  // 2% of radius
+        m_hypersphereGen.GeneratePointsCPU(points, m_pointCount, shellRadius, shellThickness);
 
         // Upload point data to GPU
         D3D12_SUBRESOURCE_DATA vertexData = {};

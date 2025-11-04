@@ -22,7 +22,7 @@ bool HypersphereGenerator::Initialize(ID3D12Device* device, ID3D12GraphicsComman
     return true;
 }
 
-void HypersphereGenerator::GeneratePointsCPU(std::vector<Point4D>& points, uint32_t count, float radius)
+void HypersphereGenerator::GeneratePointsCPU(std::vector<Point4D>& points, uint32_t count, float radius, float shellThickness)
 {
     points.resize(count);
     m_radius = radius;
@@ -30,42 +30,52 @@ void HypersphereGenerator::GeneratePointsCPU(std::vector<Point4D>& points, uint3
     // Initialize random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<float> dist(0.0f, 1.0f);
+    std::normal_distribution<float> normalDist(0.0f, 1.0f);
+    std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
 
-    // Generate random points on hypersphere
+    // Generate random points on hypersphere SHELL
     for (uint32_t i = 0; i < count; ++i)
     {
         Math4D::Vector4D point;
 
         if (i == 0)
         {
-            // North pole: (0, 0, 0, radius)
+            // North pole: (0, 0, 0, radius) - at outer surface
             point = Math4D::Vector4D(0.0f, 0.0f, 0.0f, radius);
             points[i].flags = 1;
         }
         else if (i == 1)
         {
-            // South pole: (0, 0, 0, -radius)
+            // South pole: (0, 0, 0, -radius) - at outer surface
             point = Math4D::Vector4D(0.0f, 0.0f, 0.0f, -radius);
             points[i].flags = 2;
         }
         else
         {
             // Random point using Marsaglia method
-            point.x = dist(gen);
-            point.y = dist(gen);
-            point.z = dist(gen);
-            point.w = dist(gen);
+            point.x = normalDist(gen);
+            point.y = normalDist(gen);
+            point.z = normalDist(gen);
+            point.w = normalDist(gen);
 
-            // Normalize and scale
+            // Normalize to unit sphere
             float length = point.Length();
             if (length > 0.0001f)
             {
-                point.x = (point.x / length) * radius;
-                point.y = (point.y / length) * radius;
-                point.z = (point.z / length) * radius;
-                point.w = (point.w / length) * radius;
+                point.x /= length;
+                point.y /= length;
+                point.z /= length;
+                point.w /= length;
             }
+
+            // Add random radial variation for shell thickness
+            // Random radius between (radius - thickness/2) and (radius + thickness/2)
+            float shellRadius = radius + (uniformDist(gen) - 0.5f) * shellThickness;
+            point.x *= shellRadius;
+            point.y *= shellRadius;
+            point.z *= shellRadius;
+            point.w *= shellRadius;
+
             points[i].flags = 0;
         }
 

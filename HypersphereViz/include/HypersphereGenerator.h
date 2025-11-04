@@ -25,7 +25,7 @@ public:
     bool Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, uint32_t pointCount);
 
     // Generate points on CPU (for initialization)
-    void GeneratePointsCPU(std::vector<Point4D>& points, uint32_t count, float radius = 1.0f);
+    void GeneratePointsCPU(std::vector<Point4D>& points, uint32_t count, float radius = 1.0f, float shellThickness = 0.01f);
 
     // Update rotation angles
     void UpdateRotation(float deltaTime, float speedWX, float speedWY, float speedWZ);
