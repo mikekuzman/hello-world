@@ -66,7 +66,7 @@
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>5.1</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -92,7 +92,7 @@
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>5.1</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -110,17 +110,17 @@
   <ItemGroup>
     <FxCompile Include="shaders\ComputePoints.hlsl">
       <ShaderType>Compute</ShaderType>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\VertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>5.1</ShaderModel>
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\PixelShader.hlsl">
       <ShaderType>Pixel</ShaderType>
-      <ShaderModel>6.6</ShaderModel>
+      <ShaderModel>5.1</ShaderModel>
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemGroup>
