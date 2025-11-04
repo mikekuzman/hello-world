@@ -8,6 +8,15 @@ HWND g_hwnd = nullptr;
 D3D12Renderer* g_renderer = nullptr;
 bool g_running = true;
 
+// Rotation speed state (shared across all key handlers)
+float g_speedWX = 0.5f;
+float g_speedWY = 0.3f;
+float g_speedWZ = 0.7f;
+
+// Current projection type
+const char* g_projectionNames[] = { "Perspective", "Stereographic", "Orthographic" };
+int g_currentProjection = 0;  // 0 = Perspective
+
 // Window procedure
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -36,63 +45,74 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return 0;
         case '1':  // Perspective projection
             if (g_renderer)
+            {
+                g_currentProjection = 0;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Perspective);
+                std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+            }
             return 0;
         case '2':  // Stereographic projection
             if (g_renderer)
+            {
+                g_currentProjection = 1;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Stereographic);
+                std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+            }
             return 0;
         case '3':  // Orthographic projection
             if (g_renderer)
+            {
+                g_currentProjection = 2;
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Orthographic);
+                std::cout << "\n[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+            }
             return 0;
         case 'Q':  // Increase WX rotation
             if (g_renderer)
             {
-                // Get current speeds and modify
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWX += 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWX += 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         case 'A':  // Decrease WX rotation
             if (g_renderer)
             {
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWX -= 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWX -= 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         case 'W':  // Increase WY rotation
             if (g_renderer)
             {
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWY += 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWY += 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         case 'S':  // Decrease WY rotation
             if (g_renderer)
             {
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWY -= 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWY -= 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         case 'E':  // Increase WZ rotation
             if (g_renderer)
             {
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWZ += 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWZ += 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         case 'D':  // Decrease WZ rotation
             if (g_renderer)
             {
-                static float speedWX = 0.5f, speedWY = 0.3f, speedWZ = 0.7f;
-                speedWZ -= 0.1f;
-                g_renderer->SetRotationSpeeds(speedWX, speedWY, speedWZ);
+                g_speedWZ -= 0.1f;
+                g_renderer->SetRotationSpeeds(g_speedWX, g_speedWY, g_speedWZ);
+                std::cout << "\n[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
             }
             return 0;
         }
@@ -185,7 +205,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     std::cout << "Renderer initialized successfully!\n";
-    std::cout << "Rendering 100,000 points on 4D hypersphere...\n\n";
+    std::cout << "Rendering 100,000 points on 4D hypersphere...\n";
+    std::cout << "\n=== INITIAL STATE ===\n";
+    std::cout << "[PROJECTION] " << g_projectionNames[g_currentProjection] << "\n";
+    std::cout << "[ROTATION] WX=" << g_speedWX << " WY=" << g_speedWY << " WZ=" << g_speedWZ << "\n";
+    std::cout << "=====================\n\n";
 
     // Main loop
     auto lastTime = std::chrono::high_resolution_clock::now();

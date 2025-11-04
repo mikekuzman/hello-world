@@ -513,9 +513,10 @@ void D3D12Renderer::UpdateConstantBuffer()
     // Fill constant buffer
     XMStoreFloat4x4(&m_cbData[m_frameIndex].viewProj, XMMatrixTranspose(viewProj));
 
+    // Store 4D rotation matrix (transpose for HLSL column-major layout)
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
-            m_cbData[m_frameIndex].rotation4D[i * 4 + j] = rot4D.m[i][j];
+            m_cbData[m_frameIndex].rotation4D[j * 4 + i] = rot4D.m[i][j];
 
     m_cbData[m_frameIndex].projectionDistance = m_projectionDistance;
     m_cbData[m_frameIndex].sphereRadius = 1.0f;
