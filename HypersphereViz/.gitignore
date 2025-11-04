@@ -1,0 +1,29 @@
+# Visual Studio build artifacts
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.db
+*.opendb
+*.VC.db
+*.VC.opendb
+
+# Compiled shaders
+*.cso
+
+# Build outputs
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.log
+
+# Intermediate files
+*.obj
+*.iobj
+*.ipdb
+
+# VS temporary files
+*.tmp
+*.temp
