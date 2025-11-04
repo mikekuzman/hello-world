@@ -656,11 +656,13 @@ void D3D12Renderer::RotateCamera(float deltaX, float deltaY)
 
     // Clamp vertical angle to prevent flipping
     const float PI = 3.14159265359f;
-    m_cameraAngleY = std::max(0.1f, std::min(PI - 0.1f, m_cameraAngleY));
+    if (m_cameraAngleY < 0.1f) m_cameraAngleY = 0.1f;
+    if (m_cameraAngleY > PI - 0.1f) m_cameraAngleY = PI - 0.1f;
 }
 
 void D3D12Renderer::ZoomCamera(float delta)
 {
     m_cameraDistance -= delta * 0.1f;
-    m_cameraDistance = std::max(1.0f, std::min(50.0f, m_cameraDistance));
+    if (m_cameraDistance < 1.0f) m_cameraDistance = 1.0f;
+    if (m_cameraDistance > 50.0f) m_cameraDistance = 50.0f;
 }
