@@ -57,10 +57,10 @@ void main(uint3 threadID : SV_DispatchThreadID)
     }
 
     // Scale to desired radius
-    float4 point = float4(x, y, z, w) * radius;
+    float4 pos4D = float4(x, y, z, w) * radius;
 
     // Apply 4D rotation
-    point = mul(rotation4D, point);
+    pos4D = mul(rotation4D, pos4D);
 
     // Check if this is a pole point
     uint flags = 0;
@@ -70,6 +70,6 @@ void main(uint3 threadID : SV_DispatchThreadID)
         flags = 2;  // South pole
 
     // Write to output buffer
-    OutputPoints[index].position = point;
+    OutputPoints[index].position = pos4D;
     OutputPoints[index].flags = flags;
 }
