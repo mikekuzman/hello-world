@@ -33,38 +33,25 @@ float3 ProjectTo3D(float4 point4D)
 
     if (projectionType == 0)  // Perspective
     {
-        // Two-step projection: 4D sphere -> 3D sphere -> viewing
-        // First project from 4D to 3D (perspective from w-axis)
-        // This maps the 4D sphere to a 3D sphere (bounded)
+        // Perspective projection from viewpoint at (0,0,0,projectionDistance)
+        // Projects onto w=0 hyperplane
+        // This is the natural mathematical projection - no normalization
         float scale = projectionDistance / (projectionDistance - point4D.w);
-        result = float3(point4D.x * scale, point4D.y * scale, point4D.z * scale);
-
-        // Normalize to constrain to 3D sphere surface
-        float len3D = length(result);
-        if (len3D > 0.0001)
-        {
-            result = (result / len3D) * sphereRadius;
-        }
+        result = point4D.xyz * scale;
     }
     else if (projectionType == 1)  // Stereographic
     {
-        // Single unbounded projection: 4D sphere -> 3D space
-        // Stereographic projection from north pole (unbounded)
+        // Stereographic projection from north pole (w = sphereRadius)
+        // Projects onto w=0 hyperplane
+        // This projection is conformal (preserves angles) and unbounded
         float scale = sphereRadius / (sphereRadius - point4D.w);
         result = point4D.xyz * scale;
     }
-    else  // Orthographic
+    else  // Orthographic (projectionType == 2)
     {
-        // Two-step projection: 4D sphere -> 3D sphere -> viewing
-        // First project from 4D to 3D (orthographic - just drop w)
+        // Orthographic projection - simply drop the w coordinate
+        // Maps 4D sphere surface (S³) to 3D solid ball (B³) naturally
         result = point4D.xyz;
-
-        // Normalize to constrain to 3D sphere surface
-        float len3D = length(result);
-        if (len3D > 0.0001)
-        {
-            result = (result / len3D) * sphereRadius;
-        }
     }
 
     return result;
