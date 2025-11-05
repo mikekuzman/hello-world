@@ -29,6 +29,7 @@ struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
         D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE)
     {
         CD3DX12_RESOURCE_BARRIER result;
+        memset(&result, 0, sizeof(result));
         result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         result.Flags = flags;
         result.Transition.pResource = pResource;
