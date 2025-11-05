@@ -45,6 +45,12 @@ public:
     void SetRotationSpeeds(float speedWX, float speedWY, float speedWZ);
     void SetProjectionDistance(float distance);
 
+    // Camera controls
+    void MoveCameraForward(float amount);
+    void MoveCameraRight(float amount);
+    void MoveCameraUp(float amount);
+    void RotateCamera(float yaw, float pitch);
+
     // Getters
     uint32_t GetWidth() const { return m_width; }
     uint32_t GetHeight() const { return m_height; }
@@ -133,8 +139,14 @@ private:
     float m_rotationSpeedWX;
     float m_rotationSpeedWY;
     float m_rotationSpeedWZ;
-    float m_cameraDistance;
-    float m_cameraAngleX;
-    float m_cameraAngleY;
+
+    // FPS Camera parameters
+    DirectX::XMFLOAT3 m_cameraPosition;
+    DirectX::XMFLOAT3 m_cameraForward;
+    DirectX::XMFLOAT3 m_cameraRight;
+    DirectX::XMFLOAT3 m_cameraUp;
+    float m_cameraYaw;
+    float m_cameraPitch;
+
     float m_time;
 };

@@ -37,9 +37,12 @@ D3D12Renderer::D3D12Renderer()
     , m_rotationSpeedWX(0.5f)
     , m_rotationSpeedWY(0.3f)
     , m_rotationSpeedWZ(0.7f)
-    , m_cameraDistance(5.0f)
-    , m_cameraAngleX(0.3f)
-    , m_cameraAngleY(0.0f)
+    , m_cameraPosition(0.0f, 0.0f, -5.0f)
+    , m_cameraForward(0.0f, 0.0f, 1.0f)
+    , m_cameraRight(1.0f, 0.0f, 0.0f)
+    , m_cameraUp(0.0f, 1.0f, 0.0f)
+    , m_cameraYaw(0.0f)
+    , m_cameraPitch(0.0f)
     , m_time(0.0f)
 {
     for (UINT i = 0; i < FRAME_COUNT; i++)
@@ -498,10 +501,11 @@ void D3D12Renderer::Update(float deltaTime)
 
 void D3D12Renderer::UpdateConstantBuffer()
 {
-    // Create view-projection matrix
-    XMVECTOR eye = XMVectorSet(0.0f, 0.0f, -m_cameraDistance, 0.0f);
-    XMVECTOR at = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    // Create view-projection matrix using FPS camera
+    XMVECTOR eye = XMLoadFloat3(&m_cameraPosition);
+    XMVECTOR forward = XMLoadFloat3(&m_cameraForward);
+    XMVECTOR up = XMLoadFloat3(&m_cameraUp);
+    XMVECTOR at = XMVectorAdd(eye, forward);
 
     XMMATRIX view = XMMatrixLookAtLH(eye, at, up);
     XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, m_aspectRatio, 0.1f, 100.0f);
@@ -638,4 +642,66 @@ void D3D12Renderer::SetRotationSpeeds(float speedWX, float speedWY, float speedW
 void D3D12Renderer::SetProjectionDistance(float distance)
 {
     m_projectionDistance = distance;
+}
+
+void D3D12Renderer::MoveCameraForward(float amount)
+{
+    XMVECTOR pos = XMLoadFloat3(&m_cameraPosition);
+    XMVECTOR forward = XMLoadFloat3(&m_cameraForward);
+    pos = XMVectorAdd(pos, XMVectorScale(forward, amount));
+    XMStoreFloat3(&m_cameraPosition, pos);
+}
+
+void D3D12Renderer::MoveCameraRight(float amount)
+{
+    XMVECTOR pos = XMLoadFloat3(&m_cameraPosition);
+    XMVECTOR right = XMLoadFloat3(&m_cameraRight);
+    pos = XMVectorAdd(pos, XMVectorScale(right, amount));
+    XMStoreFloat3(&m_cameraPosition, pos);
+}
+
+void D3D12Renderer::MoveCameraUp(float amount)
+{
+    XMVECTOR pos = XMLoadFloat3(&m_cameraPosition);
+    XMVECTOR up = XMLoadFloat3(&m_cameraUp);
+    pos = XMVectorAdd(pos, XMVectorScale(up, amount));
+    XMStoreFloat3(&m_cameraPosition, pos);
+}
+
+void D3D12Renderer::RotateCamera(float yaw, float pitch)
+{
+    // Update angles
+    m_cameraYaw += yaw;
+    m_cameraPitch += pitch;
+
+    // Clamp pitch to prevent gimbal lock
+    const float maxPitch = XM_PIDIV2 - 0.01f;
+    if (m_cameraPitch > maxPitch) m_cameraPitch = maxPitch;
+    if (m_cameraPitch < -maxPitch) m_cameraPitch = -maxPitch;
+
+    // Calculate new forward vector from yaw and pitch
+    float cosYaw = cosf(m_cameraYaw);
+    float sinYaw = sinf(m_cameraYaw);
+    float cosPitch = cosf(m_cameraPitch);
+    float sinPitch = sinf(m_cameraPitch);
+
+    m_cameraForward.x = cosYaw * cosPitch;
+    m_cameraForward.y = sinPitch;
+    m_cameraForward.z = sinYaw * cosPitch;
+
+    // Normalize forward vector
+    XMVECTOR forward = XMLoadFloat3(&m_cameraForward);
+    forward = XMVector3Normalize(forward);
+    XMStoreFloat3(&m_cameraForward, forward);
+
+    // Calculate right vector (cross product of world up and forward)
+    XMVECTOR worldUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR right = XMVector3Cross(forward, worldUp);
+    right = XMVector3Normalize(right);
+    XMStoreFloat3(&m_cameraRight, right);
+
+    // Calculate up vector (cross product of forward and right)
+    XMVECTOR up = XMVector3Cross(right, forward);
+    up = XMVector3Normalize(up);
+    XMStoreFloat3(&m_cameraUp, up);
 }
