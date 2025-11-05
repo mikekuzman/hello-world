@@ -447,7 +447,11 @@ bool D3D12Renderer::CreatePipelineState()
         psoDesc.VS = CD3DX12_SHADER_BYTECODE(m_vertexShader.Get());
         psoDesc.GS = CD3DX12_SHADER_BYTECODE(m_geometryShader.Get());  // Add geometry shader
         psoDesc.PS = CD3DX12_SHADER_BYTECODE(m_pixelShaderTriangles.Get());
-        psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+        // Disable culling for triangles to ensure they're visible
+        D3D12_RASTERIZER_DESC rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+        psoDesc.RasterizerState = rasterizerDesc;
 
         // Enable alpha blending for triangles
         D3D12_BLEND_DESC blendDesc = {};
@@ -461,7 +465,10 @@ bool D3D12Renderer::CreatePipelineState()
         blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         psoDesc.BlendState = blendDesc;
 
-        psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        // Disable depth writes for transparent triangles (but keep depth testing)
+        D3D12_DEPTH_STENCIL_DESC depthDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        depthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+        psoDesc.DepthStencilState = depthDesc;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;  // Input is still points
         psoDesc.NumRenderTargets = 1;

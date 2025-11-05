@@ -9,16 +9,6 @@ struct PSInput
 
 float4 main(PSInput input) : SV_TARGET
 {
-    // For triangle mode with geometry shader, add soft edges using texcoord
-
-    // Calculate distance from triangle centroid for soft falloff
-    float2 center = float2(0.5, 0.666667);  // Centroid of triangle
-    float dist = length(input.texcoord - center);
-
-    // Soft falloff - triangle vertices are at distance ~0.67 from center
-    // Fade from full opacity at center to 50% at edges
-    float alpha = 1.0 - smoothstep(0.0, 0.8, dist);
-
-    // Return color with alpha (70% base opacity with soft edges)
-    return float4(input.color.rgb, input.color.a * alpha * 0.7);
+    // Debug: Just return solid color to verify triangles are rendering
+    return input.color;
 }

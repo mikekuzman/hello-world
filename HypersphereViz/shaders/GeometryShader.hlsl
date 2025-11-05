@@ -36,7 +36,7 @@ void main(point GSInput input[1], inout TriangleStream<GSOutput> outputStream)
 
     // Size of the triangle in screen space (NDC units)
     // Scale by w component to account for perspective projection
-    float size = input[0].pointSize * 0.01 * center.w;
+    float size = input[0].pointSize * 0.05 * center.w;  // Make triangles much larger for debugging
 
     // Create a billboarded triangle (facing camera)
     // We'll make an equilateral triangle
