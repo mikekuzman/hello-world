@@ -33,17 +33,38 @@ float3 ProjectTo3D(float4 point4D)
 
     if (projectionType == 0)  // Perspective
     {
+        // Two-step projection: 4D sphere -> 3D sphere -> viewing
+        // First project from 4D to 3D (perspective from w-axis)
+        // This maps the 4D sphere to a 3D sphere (bounded)
         float scale = projectionDistance / (projectionDistance - point4D.w);
-        result = point4D.xyz * scale;
+        result = float3(point4D.x * scale, point4D.y * scale, point4D.z * scale);
+
+        // Normalize to constrain to 3D sphere surface
+        float len3D = length(result);
+        if (len3D > 0.0001)
+        {
+            result = (result / len3D) * sphereRadius;
+        }
     }
     else if (projectionType == 1)  // Stereographic
     {
+        // Single unbounded projection: 4D sphere -> 3D space
+        // Stereographic projection from north pole (unbounded)
         float scale = sphereRadius / (sphereRadius - point4D.w);
         result = point4D.xyz * scale;
     }
     else  // Orthographic
     {
+        // Two-step projection: 4D sphere -> 3D sphere -> viewing
+        // First project from 4D to 3D (orthographic - just drop w)
         result = point4D.xyz;
+
+        // Normalize to constrain to 3D sphere surface
+        float len3D = length(result);
+        if (len3D > 0.0001)
+        {
+            result = (result / len3D) * sphereRadius;
+        }
     }
 
     return result;
