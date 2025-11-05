@@ -31,11 +31,12 @@ void main(point GSInput input[1], inout TriangleStream<GSOutput> outputStream)
 {
     GSOutput output;
 
-    // Get the input point's screen position
+    // Get the input point's screen position (in clip space)
     float4 center = input[0].position;
 
-    // Size of the triangle in screen space
-    float size = input[0].pointSize * 0.002;  // Scale to NDC space
+    // Size of the triangle in screen space (NDC units)
+    // Scale by w component to account for perspective projection
+    float size = input[0].pointSize * 0.01 * center.w;
 
     // Create a billboarded triangle (facing camera)
     // We'll make an equilateral triangle
