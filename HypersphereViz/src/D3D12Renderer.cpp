@@ -30,13 +30,14 @@ D3D12Renderer::D3D12Renderer()
     , m_cbvDescriptorSize(0)
     , m_cbData(nullptr)
     , m_cbDataBegin(nullptr)
-    , m_pointCount(100000)
+    , m_pointCount(100000)  // Default for point mode
     , m_maxPointCount(10000000)
     , m_projectionType(Math4D::ProjectionType::Perspective)
     , m_projectionDistance(2.5f)
     , m_rotationSpeedWX(0.5f)
     , m_rotationSpeedWY(0.3f)
     , m_rotationSpeedWZ(0.7f)
+    , m_renderMode(RenderMode::Points)  // Start in point mode
     , m_cameraPosition(0.0f, 0.0f, -5.0f)
     , m_cameraForward(0.0f, 0.0f, 1.0f)
     , m_cameraRight(1.0f, 0.0f, 0.0f)
@@ -367,12 +368,21 @@ bool D3D12Renderer::LoadShaders()
     };
 
     std::string vsSource = readFile("shaders/VertexShader.hlsl");
+    std::string gsSource = readFile("shaders/GeometryShader.hlsl");
     std::string psSource = readFile("shaders/PixelShader.hlsl");
 
     ComPtr<ID3DBlob> error;
 
     HRESULT hr = D3DCompile(vsSource.c_str(), vsSource.size(), nullptr, nullptr, nullptr,
         "main", "vs_5_1", compileFlags, 0, &m_vertexShader, &error);
+    if (FAILED(hr) && error)
+    {
+        OutputDebugStringA((char*)error->GetBufferPointer());
+        return false;
+    }
+
+    hr = D3DCompile(gsSource.c_str(), gsSource.size(), nullptr, nullptr, nullptr,
+        "main", "gs_5_1", compileFlags, 0, &m_geometryShader, &error);
     if (FAILED(hr) && error)
     {
         OutputDebugStringA((char*)error->GetBufferPointer());

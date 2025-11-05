@@ -12,6 +12,13 @@
 
 using Microsoft::WRL::ComPtr;
 
+// Rendering mode
+enum class RenderMode
+{
+    Points,     // Point particles (fast, lots of them)
+    Triangles   // Billboarded triangles with alpha (slower, fewer)
+};
+
 // Constant buffer structure
 // NOTE: Must be 256-byte aligned for D3D12
 struct SceneConstants
@@ -45,6 +52,7 @@ public:
     void SetProjectionType(Math4D::ProjectionType type);
     void SetRotationSpeeds(float speedWX, float speedWY, float speedWZ);
     void SetProjectionDistance(float distance);
+    void SetRenderMode(RenderMode mode);
 
     // Camera controls
     void MoveCameraForward(float amount);
@@ -112,10 +120,12 @@ private:
 
     // Pipeline objects
     ComPtr<ID3D12RootSignature> m_rootSignature;
-    ComPtr<ID3D12PipelineState> m_pipelineState;
+    ComPtr<ID3D12PipelineState> m_pipelineStatePoints;      // Point rendering pipeline
+    ComPtr<ID3D12PipelineState> m_pipelineStateTriangles;   // Triangle rendering pipeline
 
     // Shaders
     ComPtr<ID3DBlob> m_vertexShader;
+    ComPtr<ID3DBlob> m_geometryShader;
     ComPtr<ID3DBlob> m_pixelShader;
 
     // Geometry buffers
@@ -140,6 +150,7 @@ private:
     float m_rotationSpeedWX;
     float m_rotationSpeedWY;
     float m_rotationSpeedWZ;
+    RenderMode m_renderMode;
 
     // FPS Camera parameters
     DirectX::XMFLOAT3 m_cameraPosition;

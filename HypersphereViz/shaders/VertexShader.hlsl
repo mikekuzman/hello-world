@@ -12,6 +12,7 @@ struct VSOutput
     float4 position : SV_POSITION;
     float4 color : COLOR0;
     float pointSize : PSIZE;
+    float2 texcoord : TEXCOORD0;  // For triangle mode
 };
 
 cbuffer SceneConstants : register(b0)
@@ -115,6 +116,9 @@ VSOutput main(Point4D input)
 
     // Larger points for poles
     output.pointSize = (input.flags > 0) ? 8.0 : 2.0;
+
+    // Texcoord for triangle mode (unused in point mode)
+    output.texcoord = float2(0.0, 0.0);
 
     return output;
 }
