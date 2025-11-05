@@ -123,7 +123,12 @@
       <ShaderModel>5.1</ShaderModel>
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="shaders\PixelShader.hlsl">
+    <FxCompile Include="shaders\PixelShaderPoints.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="shaders\PixelShaderTriangles.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.1</ShaderModel>
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>

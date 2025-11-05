@@ -369,7 +369,8 @@ bool D3D12Renderer::LoadShaders()
 
     std::string vsSource = readFile("shaders/VertexShader.hlsl");
     std::string gsSource = readFile("shaders/GeometryShader.hlsl");
-    std::string psSource = readFile("shaders/PixelShader.hlsl");
+    std::string psPointsSource = readFile("shaders/PixelShaderPoints.hlsl");
+    std::string psTrianglesSource = readFile("shaders/PixelShaderTriangles.hlsl");
 
     ComPtr<ID3DBlob> error;
 
@@ -389,8 +390,16 @@ bool D3D12Renderer::LoadShaders()
         return false;
     }
 
-    hr = D3DCompile(psSource.c_str(), psSource.size(), nullptr, nullptr, nullptr,
-        "main", "ps_5_1", compileFlags, 0, &m_pixelShader, &error);
+    hr = D3DCompile(psPointsSource.c_str(), psPointsSource.size(), nullptr, nullptr, nullptr,
+        "main", "ps_5_1", compileFlags, 0, &m_pixelShaderPoints, &error);
+    if (FAILED(hr) && error)
+    {
+        OutputDebugStringA((char*)error->GetBufferPointer());
+        return false;
+    }
+
+    hr = D3DCompile(psTrianglesSource.c_str(), psTrianglesSource.size(), nullptr, nullptr, nullptr,
+        "main", "ps_5_1", compileFlags, 0, &m_pixelShaderTriangles, &error);
     if (FAILED(hr) && error)
     {
         OutputDebugStringA((char*)error->GetBufferPointer());
@@ -416,7 +425,7 @@ bool D3D12Renderer::CreatePipelineState()
         psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
         psoDesc.pRootSignature = m_rootSignature.Get();
         psoDesc.VS = CD3DX12_SHADER_BYTECODE(m_vertexShader.Get());
-        psoDesc.PS = CD3DX12_SHADER_BYTECODE(m_pixelShader.Get());
+        psoDesc.PS = CD3DX12_SHADER_BYTECODE(m_pixelShaderPoints.Get());
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
         psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -437,7 +446,7 @@ bool D3D12Renderer::CreatePipelineState()
         psoDesc.pRootSignature = m_rootSignature.Get();
         psoDesc.VS = CD3DX12_SHADER_BYTECODE(m_vertexShader.Get());
         psoDesc.GS = CD3DX12_SHADER_BYTECODE(m_geometryShader.Get());  // Add geometry shader
-        psoDesc.PS = CD3DX12_SHADER_BYTECODE(m_pixelShader.Get());
+        psoDesc.PS = CD3DX12_SHADER_BYTECODE(m_pixelShaderTriangles.Get());
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
         // Enable alpha blending for triangles

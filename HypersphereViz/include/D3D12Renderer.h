@@ -126,7 +126,8 @@ private:
     // Shaders
     ComPtr<ID3DBlob> m_vertexShader;
     ComPtr<ID3DBlob> m_geometryShader;
-    ComPtr<ID3DBlob> m_pixelShader;
+    ComPtr<ID3DBlob> m_pixelShaderPoints;
+    ComPtr<ID3DBlob> m_pixelShaderTriangles;
 
     // Geometry buffers
     ComPtr<ID3D12Resource> m_pointBuffer;
