@@ -82,6 +82,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_renderer->SetProjectionType(Math4D::ProjectionType::Orthographic);
             return 0;
 
+        // Rendering mode toggle
+        case 'P':  // Points/Particles mode
+            if (g_renderer)
+                g_renderer->SetRenderMode(RenderMode::Points);
+            return 0;
+        case 'L':  // triangLes mode (L for triangLes)
+            if (g_renderer)
+                g_renderer->SetRenderMode(RenderMode::Triangles);
+            return 0;
+
         // Increase rotation speeds
         case '4':  // Increase WX rotation
             g_rotationSpeedWX += 0.1f;
@@ -201,7 +211,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     std::cout << "  Space/C  - Move camera up/down\n";
     std::cout << "  Shift    - Sprint (hold with movement keys)\n";
     std::cout << "  Mouse    - Look around (FPS style)\n\n";
-    std::cout << "  1/2/3    - Perspective/Stereographic/Orthographic projection\n\n";
+    std::cout << "  1/2/3    - Perspective/Stereographic/Orthographic projection\n";
+    std::cout << "  P/L      - Points (100k particles) / triangLes (30k with alpha)\n\n";
     std::cout << "  4/R      - Increase/Decrease WX rotation speed\n";
     std::cout << "  5/T      - Increase/Decrease WY rotation speed\n";
     std::cout << "  6/Y      - Increase/Decrease WZ rotation speed\n\n";
