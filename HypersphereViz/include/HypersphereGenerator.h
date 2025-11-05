@@ -13,6 +13,11 @@ struct Point4D
     float x, y, z, w;
     uint32_t flags;  // 0 = normal, 1 = north pole, 2 = south pole
     float padding[3];  // Align to 32 bytes
+
+    float Length() const
+    {
+        return sqrtf(x * x + y * y + z * z + w * w);
+    }
 };
 
 class HypersphereGenerator

@@ -80,6 +80,36 @@ bool D3D12Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height)
         const float shellThickness = 0.02f;  // 2% of radius
         m_hypersphereGen.GeneratePointsCPU(points, m_pointCount, shellRadius, shellThickness);
 
+        // DEBUG: Analyze generated points
+        float minW = points[2].w, maxW = points[2].w;  // Skip poles at 0,1
+        float minLen = points[2].Length(), maxLen = points[2].Length();
+        for (size_t i = 2; i < points.size(); i++)
+        {
+            float w = points[i].w;
+            float len = points[i].Length();
+            if (w < minW) minW = w;
+            if (w > maxW) maxW = w;
+            if (len < minLen) minLen = len;
+            if (len > maxLen) maxLen = len;
+        }
+        std::cout << "\n=== DEBUG: Generated Points ===" << std::endl;
+        std::cout << "Point count: " << points.size() << std::endl;
+        std::cout << "W range: [" << minW << ", " << maxW << "]" << std::endl;
+        std::cout << "Length range: [" << minLen << ", " << maxLen << "]" << std::endl;
+        std::cout << "Expected: W in [-1.01, 1.01], Length near 1.0" << std::endl;
+
+        // Verify projection bounds mathematically
+        float projDist = m_projectionDistance;
+        float perspScale_min = projDist / (projDist - maxW);
+        float perspScale_max = projDist / (projDist - minW);
+        std::cout << "\n=== Perspective Projection (d=" << projDist << ") ===" << std::endl;
+        std::cout << "Scale range: [" << perspScale_min << ", " << perspScale_max << "]" << std::endl;
+        std::cout << "Expected max coordinate: ~" << (perspScale_max * 1.0f) << std::endl;
+
+        std::cout << "\n=== Orthographic Projection ===" << std::endl;
+        std::cout << "Expected max coordinate: ~1.0 (since x²+y²+z² ≤ 1)" << std::endl;
+        std::cout << "================================\n" << std::endl;
+
         // Upload point data to GPU
         D3D12_SUBRESOURCE_DATA vertexData = {};
         vertexData.pData = points.data();
@@ -530,6 +560,18 @@ void D3D12Renderer::UpdateConstantBuffer()
     m_cbData[m_frameIndex].projectionType = static_cast<int>(m_projectionType);
     m_cbData[m_frameIndex].pointCount = m_pointCount;
     m_cbData[m_frameIndex].time = m_time;
+
+    // DEBUG: Print shader constants every 300 frames (~5 seconds at 60fps)
+    static int frameCounter = 0;
+    if (++frameCounter >= 300)
+    {
+        frameCounter = 0;
+        const char* projNames[] = { "Perspective", "Stereographic", "Orthographic" };
+        std::cout << "\n[SHADER DEBUG] projectionType=" << m_cbData[m_frameIndex].projectionType
+                  << " (" << projNames[m_cbData[m_frameIndex].projectionType] << ")" << std::endl;
+        std::cout << "  projectionDistance=" << m_cbData[m_frameIndex].projectionDistance << std::endl;
+        std::cout << "  sphereRadius=" << m_cbData[m_frameIndex].sphereRadius << std::endl;
+    }
 }
 
 void D3D12Renderer::PopulateCommandList()

@@ -40,11 +40,7 @@ float3 ProjectTo3D(float4 point4D)
     {
         // Stereographic projection from north pole
         // Note: This is unbounded! Points near w=radius project to infinity
-        // We clamp the scale to prevent extreme values
-        float denominator = sphereRadius - point4D.w;
-        float scale = sphereRadius / max(abs(denominator), 0.01);  // Prevent division by near-zero
-        if (denominator < 0) scale = -scale;  // Preserve sign
-        scale = clamp(scale, -100.0, 100.0);  // Clamp to reasonable range
+        float scale = sphereRadius / (sphereRadius - point4D.w);
         result = point4D.xyz * scale;
     }
     else  // Orthographic
